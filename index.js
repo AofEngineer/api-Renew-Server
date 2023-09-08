@@ -7,8 +7,8 @@ const fileUpload = require("express-fileupload");
 const jwt = require("jsonwebtoken");
 require("dotenv").config("");
 const app = express();
-const config = process.env;
-const port = 8080;
+
+const port = 5000;
 const bcrypt = require("bcrypt");
 const mysql = require("mysql2");
 
@@ -67,7 +67,7 @@ app.post("/login", async (req, res) => {
         return res.status(200).json({
           status: "ok",
           message: "Logged in",
-          accessToken: jwt.sign({ username: username }, config.JWT_SECRET_KEY, {
+          accessToken: jwt.sign({ username: username }, "token_key", {
             expiresIn: "1h",
           }),
           expiresIn: "1h",
@@ -108,7 +108,7 @@ app.post("/auth", (req, res) => {
     accessToken = authHeader;
   }
   try {
-    const decode = jwt.verify(accessToken, config.JWT_SECRET_KEY);
+    const decode = jwt.verify(accessToken, "token_key");
     res.status(200).json({ status: "ok", message: "ok", data: decode });
   } catch (err) {
     res.json({
