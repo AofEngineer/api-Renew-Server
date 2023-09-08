@@ -11,13 +11,7 @@ const config = process.env;
 const port = 8080;
 const bcrypt = require("bcrypt");
 const mysql = require("mysql2");
-// const crypto = require('crypto')
-//
-//
-//
-//
-//
-//
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan("dev"));
@@ -383,4 +377,4 @@ app.put("/api/upuser/:id", function (req, res) {
   });
 });
 
-// app.delete("/api/attractions", function (req, res, next) {});
+
