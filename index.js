@@ -7,11 +7,10 @@ const fileUpload = require("express-fileupload");
 const jwt = require("jsonwebtoken");
 require("dotenv").config("");
 const app = express();
-const connectserver = require("./database");
 const config = process.env;
-const port = config.PORT;
-const connection = connectserver();
+const port = 8080;
 const bcrypt = require("bcrypt");
+const mysql = require("mysql2");
 // const crypto = require('crypto')
 //
 //
@@ -28,6 +27,13 @@ app.use(fileUpload());
 app.use("/public", express.static(__dirname + "/public"));
 app.listen(port, function () {
   console.log(`Server Listen on port ${port}`);
+});
+
+const connection  = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME,
 });
 
 // app.post("/register"),
