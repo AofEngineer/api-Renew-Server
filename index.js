@@ -9,7 +9,7 @@ require("dotenv").config("");
 const app = express();
 
 const port = 5000;
-const bcrypt = require("bcrypt");
+// const bcrypt = require("bcrypt");
 const mysql = require("mysql2");
 
 app.use(bodyParser.json());
@@ -23,11 +23,31 @@ app.listen(port, function () {
   console.log(`Server Listen on port ${port}`);
 });
 
-const connection  = mysql.createConnection({
+app.use((req, res, next) =>{
+  req.setHeader("Access-Control-Allow-Origin", "*"); 
+  req.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, *");
+  req.setHeader("Access-Control-Allow-Headers", "Content-Type, *");
+  req.setHeader("Access-Control-Allow-Credentials", true);
+  req.setHeader("Content-Type","application/json")
+  req.setHeader("Accept","application/json")
+  req.setHeader("Origin", "https://main.d1yi7ula7o7ab3.amplifyapp.com");
+
+
+  res.setHeader("Access-Control-Allow-Origin", "*"); 
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, *");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, *");
+  res.setHeader("Access-Control-Allow-Credentials", true);
+  res.setHeader("Content-Type","application/json")
+  res.setHeader("Accept","application/json")
+  res.setHeader("Origin", "https://main.d1yi7ula7o7ab3.amplifyapp.com");
+  next();
+});
+
+const connection  = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
 });
 
 // app.post("/register"),
@@ -43,12 +63,40 @@ const connection  = mysql.createConnection({
 //     }
 //   };
 
-app.post("/login", async (req, res) => {
-  if (req.body.user != undefined) {
-    const { user, hash } = req.body;
+app.post("/hello",(req, res) => {
+  const json = req.body
+  const { user, pass } = req.body;
+  const sqllogin =
+  "SELECT * FROM members WHERE username = '" + `${user}` + "'";
+  connection.query(sqllogin,  (err, results) => {
+    if (err) return res.status(500).json({ message: "Not excute" });
+    return res.status(200).json({
+      status: "ok",
+      message: "Logged in",
+      accessToken: jwt.sign({ username: results[0].username }, "token_key", {
+        expiresIn: "1h",
+      }),
+      expiresIn: "1h",
+      user: results
+    })  
+ }) 
+})
+
+// const c =  bcrypt.compare(password, hash);
+      // if (c) {
+  // }
+      // return res.status(401).json({
+      //   message: "The username and password your provided are invalid",
+      // });
+
+
+app.post("/loginsa", (req, res) => {
+  const json = req.query
+  if (json.user != undefined) {
+    const { user } = req.query;
     const sqllogin =
       "SELECT * FROM members WHERE username = '" + `${user}` + "'";
-    connection.execute(sqllogin, async (err, results) => {
+    connection.query(sqllogin,  (err, results) => {
       if (err) return res.status(500).json({ message: "Not excute" });
       if (results[0] === undefined)
         return res.status(401).json({ message: "User not Found" });
@@ -62,8 +110,7 @@ app.post("/login", async (req, res) => {
         tel,
         company_no_outlander,
       } = results[0];
-      const c = await bcrypt.compare(password, hash);
-      if (c) {
+      
         return res.status(200).json({
           status: "ok",
           message: "Logged in",
@@ -81,24 +128,20 @@ app.post("/login", async (req, res) => {
             companyNo: company_no_outlander,
           },
         });
-      }
-      return res.status(401).json({
-        message: "The username and password your provided are invalid",
-      });
+    
     });
   } else {
     res.status(401).json({
       message: "The username or password your provided are invalid",
+      data: json
     });
   }
 });
-
+// req.body.token ||
+//     req.query.token ||
+//     req.headers["x-access-token"] ||
 app.post("/auth", (req, res) => {
-  const token =
-    req.body.token ||
-    req.query.token ||
-    req.headers["x-access-token"] ||
-    req.headers.authorization;
+  const token = req.headers.authorization;
   if (!token) return res.status(403).send("A token is required for authen");
   const authHeader = token;
   let accessToken;
@@ -114,6 +157,8 @@ app.post("/auth", (req, res) => {
     res.json({
       message: "time exipire",
       boo: "true",
+      why: {token},
+      data:{err}
     });
   }
 });
@@ -151,7 +196,7 @@ app.post("/api/upload", (req, res) => {
 const sqlget = "SELECT * FROM persons";
 // My SQL Server
 app.get("/api/users", (req, res) => {
-  connection.execute(sqlget, (err, results, fields) => {
+  connection.query(sqlget, (err, results, fields) => {
     if (err) {
       return res
         .status(500)
@@ -165,7 +210,7 @@ app.get("/api/users", (req, res) => {
 app.get("/api/users/:id", (req, res) => {
   const id = req.params.id;
   let sqlwhere = sqlget + " WHERE `personid` = " + id;
-  connection.execute(sqlwhere, (err, results, fields) => {
+  connection.query(sqlwhere, (err, results, fields) => {
     if (err) {
       return res
         .status(500)
@@ -248,7 +293,7 @@ app.post("/api/plususers", (req, res) => {
     "','" +
     postparam.picpath +
     "')";
-  connection.execute(validate, (err, results, fields) => {
+  connection.query(validate, (err, results, fields) => {
     if (err) {
       return res
         .status(500)
@@ -256,7 +301,7 @@ app.post("/api/plususers", (req, res) => {
     }
     // console.log(results);
     if (results[0] === undefined) {
-      connection.execute(sqlinsert, (err, results, fields) => {
+      connection.query(sqlinsert, (err, results, fields) => {
         if (err) {
           return res.status(500).json({ message: "Input Valid" });
         }
@@ -341,20 +386,20 @@ app.put("/api/upuser/:id", function (req, res) {
     "";
   const checkid_out =
     sqlget + " WHERE `outlanderNo`='" + postparam.id_outer + "'";
-  connection.execute(validate, (err, results, fields) => {
+  connection.query(validate, (err, results, fields) => {
     if (err) {
       return res.status(500).json({ message: "Database Not Connect" });
     }
 
     if (results[0] !== undefined) {
-      connection.execute(checkid_out, (err, results, fields) => {
+      connection.query(checkid_out, (err, results, fields) => {
         if (err) {
           return res.status(500).json({ message: "Database Not Connect" });
         }
         if (results[0] !== undefined) {
           return res.status(403).json({ message: "รหัสต่างด้าวซ้ำ" });
         }
-        connection.execute(sqlupdate, (err, results, fields) => {
+        connection.query(sqlupdate, (err, results, fields) => {
           if (err) {
             return res.status(500).json({ message: "Database Not Connect " });
           }
