@@ -104,7 +104,7 @@ const jwtRefreshTokenValidate = (req, res, next) => {
 
 app.post("/login", (req, res) => {
   const { user, hash } = req.body;
-  const sql = `SELECT * FROM members WHERE username = '${user}'`;
+  const sql = `SELECT m.*,p.addpermis, p.delpermis,p.editpermis,p.readpermis,p.admin FROM members as m  LEFT JOIN permission as p ON m.piority = p.per_id WHERE username = '${user}'`;
   connection.query(sql, (err, results) => {
     if (err)
       return res
@@ -114,6 +114,7 @@ app.post("/login", (req, res) => {
     if (!user || index < 0)
       return res.status(400).json({ message: "User Invalid" });
     const data = results[0];
+
     if (bcrypt.compareSync(data.password, hash)) {
       const accessToken = jwtGenerate(data);
       const refresh_token = jwtRefreshTokenGenerate(data);
@@ -121,6 +122,11 @@ app.post("/login", (req, res) => {
       // return res.json(sqltoken);
       connection.query(sqltoken, res, (err, row) => {
         const refreshToken = bcrypt.hashSync(refresh_token, salt);
+        const hashread = bcrypt.hashSync(data.readpermis.toString(), salt);
+        const hashadd = bcrypt.hashSync(data.addpermis.toString(), salt);
+        const hashedit = bcrypt.hashSync(data.editpermis.toString(), salt);
+        const hashdel = bcrypt.hashSync(data.delpermis.toString(), salt);
+        const admin = bcrypt.hashSync(data.admin.toString(), salt);
         if (err)
           return res
             .status(500)
@@ -137,7 +143,14 @@ app.post("/login", (req, res) => {
             company: data.member_company,
             email: data.email,
             tel: data.tel,
-            // companyNo: data.company_no_outlander,
+            companyNo: data.company_id,
+            piority: {
+              readpermis: hashread,
+              addpermis: hashadd,
+              editpermis: hashedit,
+              delpermis: hashdel,
+              role: admin,
+            },
           },
         });
       });
