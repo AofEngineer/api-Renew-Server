@@ -213,7 +213,7 @@ app.get("/api/users", jwtValidate, (req, res) => {
 });
 app.get("/api/members", jwtValidate, (req, res) => {
   const mem_id = req.body.mem_id ? `WHERE mem_id = ${req.body.mem_id}` : ``;
-  const sql = `SELECT username , member_name, member_lastname, email, tel, p.addpermis, p.delpermis,p.editpermis,p.readpermis FROM members as m  LEFT JOIN permission as p ON m.piority = p.per_id ${mem_id}`;
+  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, p.addpermis, p.delpermis,p.editpermis,p.readpermis FROM members as m  LEFT JOIN permission as p ON m.piority = p.per_id ${mem_id}`;
   connection.query(sql, (err, results, fields) => {
     if (err) {
       return res
@@ -225,6 +225,7 @@ app.get("/api/members", jwtValidate, (req, res) => {
     });
   });
 });
+
 app.get("/api/company", jwtValidate, (req, res) => {
   const cpn_id = req.body.cpn_id ? `WHERE cpn_id = ${req.body.cpn_id}` : ``;
   const sql = `SELECT c.*,b.branchname,b.branch_no,b.branch_id FROM company as c  LEFT JOIN branch as b ON c.branch_id = b.branch_id ${cpn_id}`;
@@ -275,7 +276,7 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
     const index = results.findIndex((e) => e.outlanderNo === outlanderNo);
     let text = "";
     for (const x in postparam) {
-      if (x === "personid" || x === "member_group" || x === "company_id") {
+      if (x === "person_id" || x === "member_group" || x === "company_id") {
         text += `${postparam[x]},`;
       } else {
         text += `'${postparam[x]}',`;
@@ -310,23 +311,24 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
   });
 });
 
-app.put("/api/upuser/:id", jwtValidate, function (req, res) {
-  const ids = req.params.id;
-  const upparam = req.body;
+app.put("/api/upuser", jwtValidate, function (req, res) {
+  const ids = req.body.person_id;
+  const upparam = req.body.inputData;
   const { outlanderNo } = upparam;
   let text = "";
   for (const x in upparam) {
-    if (x === "personid" || x === "member_group" || x === "company_id") {
+    if (x === "person_id" || x === "member_group" || x === "company_id") {
       text += `${x}=${upparam[x]},`;
     } else {
       text += `${x}='${upparam[x]}',`;
     }
   }
+
   text = text.slice(0, -1);
-  const sql = `UPDATE persons SET ${text} WHERE personid = ${ids}`;
+  const sql = `UPDATE persons SET ${text} WHERE person_id = ${ids}`;
   // return res.json(sql);
   const checkid_out = `SELECT * FROM persons WHERE outlanderNo = '${outlanderNo}'`;
-  const updateq = `UPDATE persons SET outlanderNo  = ' ' WHERE personid = ${ids}`;
+  const updateq = `UPDATE persons SET outlanderNo  = ' ' WHERE person_id = ${ids}`;
   connection.query(updateq, (err, results, fields) => {
     if (err) return res.status(500).json(err);
     connection.query(checkid_out, (err, results, fields) => {
@@ -350,8 +352,9 @@ app.put("/api/upuser/:id", jwtValidate, function (req, res) {
 });
 
 app.post("/api/upcom", jwtValidate, (req, res) => {
-  const postparam = req.body;
-  const { c_iden, cpn_n } = postparam;
+  const postcompany = req.body.company;
+  const postbranch = req.body.branch;
+  const { c_iden, cpn_n } = postcompany;
   const validate = `SELECT * FROM company WHERE c_iden ='${c_iden}'`;
   connection.query(validate, (err, results, fields) => {
     if (err) return res.status(500).json(err);
@@ -361,30 +364,43 @@ app.post("/api/upcom", jwtValidate, (req, res) => {
         .status(400)
         .json({ message: `บริษัทเลขที่ : ${c_iden}  มีอยู่แล้ว` });
     let text = "";
-    for (const x in postparam) {
+    for (const x in postcompany) {
       if (x === "member_group") {
-        text += `${postparam[x]},`;
+        text += `${postcompany[x]},`;
       } else {
-        text += `'${postparam[x]}',`;
+        text += `'${postcompany[x]}',`;
       }
     }
     text = text.slice(0, -1);
     const sql = `INSERT INTO company(${Object.keys(
-      postparam
+      postcompany
     )})VALUES (${text}) `;
-    connection.query(sql, (err, results, fields) => {
+    // return res.json(sql);
+    connection.query(sql, (err, results) => {
       if (err) return res.status(500).json(err);
-      res.status(200).json({
-        status: "ok",
-        message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
+      let str = "";
+      for (const x in postbranch) {
+        str += `'${postbranch[x]}',`;
+      }
+      str += `${postcompany.member_group},`;
+      str += results.insertId;
+      const sqlb = `INSERT INTO branch(${Object.keys(
+        postbranch
+      )},member_group,company_id) VALUE(${str})`;
+      connection.query(sqlb, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.status(200).json({
+          status: "ok",
+          message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
+        });
       });
     });
   });
 });
 
-app.put("/api/ecom/:id", jwtValidate, (req, res) => {
-  const ids = req.params.id;
-  const upparam = req.body;
+app.put("/api/ecom", jwtValidate, (req, res) => {
+  const ids = req.body.cpn_id;
+  const upparam = req.body.inputData;
   const { c_iden, cpn_n } = upparam;
   let text = "";
   for (const x in upparam) {
