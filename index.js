@@ -183,7 +183,7 @@ app.get("/download/:filename", (req, res) => {
 //upload file
 app.post("/api/upload", (req, res, next) => {
   const uploadFile = req.files.file;
-  const reqname = req.body.engname;
+  const reqname = req.body.firstname;
   uploadFile.mv(`${__dirname}/public/files/${reqname}`, (err) => {
     if (err) {
       return res.status(500).send({ message: "Doesn't Upload", msg: { err } });
@@ -266,6 +266,7 @@ app.get("/api/users/:id", jwtValidate, (req, res) => {
 app.post("/api/plususers", jwtValidate, (req, res) => {
   const postparam = req.body;
   const { outlanderNo } = postparam;
+  // return res.json(postparam);
   const validate = `SELECT * FROM persons WHERE outlanderNo ='${outlanderNo}'`;
   connection.query(validate, (err, results, fields) => {
     if (err) {
@@ -274,10 +275,18 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
         .json({ message: "Database Not Connect or Input Valid", msg: err });
     }
     const index = results.findIndex((e) => e.outlanderNo === outlanderNo);
+    if (index >= 0)
+      return res
+        .status(200)
+        .json({ message: `รหัส : ${outlanderNo} นี้มีอยู่แล้ว` });
     let text = "";
     for (const x in postparam) {
       if (x === "person_id" || x === "member_group" || x === "company_id") {
-        text += `${postparam[x]},`;
+        if (x === "member_group") {
+          text += `1,`;
+        } else {
+          text += `${postparam[x]},`;
+        }
       } else {
         text += `'${postparam[x]}',`;
       }
@@ -287,27 +296,21 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
       postparam
     )})VALUES (${text}) `;
 
-    if (index < 0) {
-      connection.query(sql, (err, results, fields) => {
-        if (err) {
-          return res.status(500).json({ message: "Input Valid", msg: err });
-        }
+    connection.query(sql, (err, results, fields) => {
+      if (err) {
+        return res.status(500).json({ message: "Input Valid", msg: err });
+      }
 
-        res.status(200).json({
-          status: "ok",
-          message:
-            "Insert ID: " +
-            outlanderNo +
-            " Name: " +
-            postparam.firstnameth +
-            " Successful",
-        });
-      });
-    } else {
       res.status(200).json({
-        message: `รหัส : ${outlanderNo} นี้มีอยู่แล้ว`,
+        status: "ok",
+        message:
+          "Insert ID: " +
+          outlanderNo +
+          " Name: " +
+          postparam.firstnameth +
+          " Successful",
       });
-    }
+    });
   });
 });
 
