@@ -104,7 +104,7 @@ const jwtRefreshTokenValidate = (req, res, next) => {
 
 app.post("/login", (req, res) => {
   const { user, hash } = req.body;
-  const sql = `SELECT m.*,p.addpermis, p.delpermis,p.editpermis,p.readpermis,p.admin FROM members as m  LEFT JOIN permission as p ON m.piority = p.per_id WHERE username = '${user}'`;
+  const sql = `SELECT * FROM members WHERE username = '${user}'`;
   connection.query(sql, (err, results) => {
     if (err)
       return res
@@ -115,50 +115,47 @@ app.post("/login", (req, res) => {
       return res.status(400).json({ message: "User Invalid" });
     const data = results[0];
 
-    if (bcrypt.compareSync(data.password, hash)) {
-      const accessToken = jwtGenerate(data);
-      const refresh_token = jwtRefreshTokenGenerate(data);
-      const sqltoken = `UPDATE members SET refreshtoken='${refresh_token}' WHERE mem_id= ${data.mem_id}`;
-      // return res.json(sqltoken);
-      connection.query(sqltoken, res, (err, row) => {
-        const refreshToken = bcrypt.hashSync(refresh_token, salt);
-        const hashread = bcrypt.hashSync(data.readpermis.toString(), salt);
-        const hashadd = bcrypt.hashSync(data.addpermis.toString(), salt);
-        const hashedit = bcrypt.hashSync(data.editpermis.toString(), salt);
-        const hashdel = bcrypt.hashSync(data.delpermis.toString(), salt);
-        const admin = bcrypt.hashSync(data.admin.toString(), salt);
-        if (err)
-          return res
-            .status(500)
-            .json({ message: "Database Not Connect or Data Invalid" });
-        res.status(200).json({
-          status: "ok",
-          message: "Logged in",
-          accessToken,
-          refreshToken,
-          user: {
-            fname: data.member_name,
-            lname: data.member_lastname,
-            username: data.username,
-            company: data.member_company,
-            email: data.email,
-            tel: data.tel,
-            companyNo: data.company_id,
-            piority: {
-              readpermis: hashread,
-              addpermis: hashadd,
-              editpermis: hashedit,
-              delpermis: hashdel,
-              role: admin,
-            },
-          },
-        });
-      });
-    } else {
-      res.status(400).json({
+    if (!bcrypt.compareSync(data.password, hash))
+      return res.status(400).json({
         message: "Password Invalid",
       });
-    }
+    const accessToken = jwtGenerate(data);
+    const refresh_token = jwtRefreshTokenGenerate(data);
+    const sqltoken = `UPDATE members SET refreshtoken='${refresh_token}' WHERE mem_id= ${data.mem_id}`;
+    // return res.json(sqltoken);
+    connection.query(sqltoken, res, (err, row) => {
+      const refreshToken = bcrypt.hashSync(refresh_token, salt);
+      const hashread = bcrypt.hashSync(data.m_read.toString(), salt);
+      const hashadd = bcrypt.hashSync(data.m_add.toString(), salt);
+      const hashedit = bcrypt.hashSync(data.m_edit.toString(), salt);
+      const hashdel = bcrypt.hashSync(data.m_del.toString(), salt);
+      // const admin = bcrypt.hashSync(data.admin.toString(), salt);
+      if (err)
+        return res
+          .status(500)
+          .json({ message: "Database Not Connect or Data Invalid" });
+      res.status(200).json({
+        status: "ok",
+        message: "Logged in",
+        accessToken,
+        refreshToken,
+        user: {
+          fname: data.member_name,
+          lname: data.member_lastname,
+          username: data.username,
+          company: data.member_company,
+          email: data.email,
+          tel: data.tel,
+          companyNo: data.company_id,
+          group: data.member_group,
+          read: hashread,
+          add: hashadd,
+          edit: hashedit,
+          del: hashdel,
+          // role: admin,
+        },
+      });
+    });
   });
 });
 app.post("/auth", jwtRefreshTokenValidate, (req, res) => {
@@ -196,10 +193,17 @@ app.post("/api/upload", (req, res, next) => {
 });
 
 //upload file
-const sqlget = "SELECT * FROM persons";
+
 // jwtValidate,
 // My SQL Server
-app.get("/api/users", jwtValidate, (req, res) => {
+///////////////////////// GET /////////////////////////
+app.post("/api/users", jwtValidate, (req, res) => {
+  if (req.body.member_group) return res.status();
+  const group = req.body.member_group
+    ? `WHERE p.member_group = ${req.body.member_group}`
+    : ``;
+
+  const sqlget = `SELECT p.*, c.* FROM persons as p LEFT JOIN company as c ON p.company_id = c.cpn_id ${group}`;
   connection.query(sqlget, (err, results, fields) => {
     if (err) {
       return res
@@ -211,9 +215,12 @@ app.get("/api/users", jwtValidate, (req, res) => {
     });
   });
 });
-app.get("/api/members", jwtValidate, (req, res) => {
-  const mem_id = req.body.mem_id ? `WHERE mem_id = ${req.body.mem_id}` : ``;
-  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, p.addpermis, p.delpermis,p.editpermis,p.readpermis FROM members as m  LEFT JOIN permission as p ON m.piority = p.per_id ${mem_id}`;
+
+app.post("/api/members", jwtValidate, (req, res) => {
+  const group = req.body.member_group
+    ? `WHERE member_group = ${req.body.member_group}`
+    : ``;
+  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read FROM members  ${group}`;
   connection.query(sql, (err, results, fields) => {
     if (err) {
       return res
@@ -226,9 +233,13 @@ app.get("/api/members", jwtValidate, (req, res) => {
   });
 });
 
-app.get("/api/company", jwtValidate, (req, res) => {
-  const cpn_id = req.body.cpn_id ? `WHERE cpn_id = ${req.body.cpn_id}` : ``;
-  const sql = `SELECT c.*,b.branchname,b.branch_no,b.branch_id FROM company as c  LEFT JOIN branch as b ON c.branch_id = b.branch_id ${cpn_id}`;
+app.post("/api/company", jwtValidate, (req, res) => {
+  const group = req.body.member_group
+    ? `WHERE c.member_group = ${req.body.member_group}`
+    : ``;
+  // const cpn_id = req.body.cpn_id ? `WHERE cpn_id = ${req.body.cpn_id}` : ``;
+  const sql = `SELECT c.*,b.branchname,b.branch_no,b.branch_id FROM company as c  LEFT JOIN branch as b ON c.branch_id = b.branch_id ${group}`;
+  // console.log(sql);
   connection.query(sql, (err, results, fields) => {
     if (err) {
       return res
@@ -240,29 +251,7 @@ app.get("/api/company", jwtValidate, (req, res) => {
     });
   });
 });
-
-app.get("/api/users/:id", jwtValidate, (req, res) => {
-  const { id } = req.params;
-  const sqlwhere = `${sqlget} WHERE personid = ${id}`;
-  connection.query(sqlwhere, (err, results, fields) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Database Not Connect or Server OFFLINE" });
-    }
-    if (results == "") {
-      return res.status(402).json({
-        status: "Data Not Found",
-      });
-    }
-    res.status(200).json({
-      status: "ok",
-      message: `User Found`,
-      data: results,
-    });
-  });
-});
-
+///////////////////////// GET /////////////////////////
 app.post("/api/plususers", jwtValidate, (req, res) => {
   const postparam = req.body;
   const { outlanderNo } = postparam;
@@ -283,7 +272,7 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
     for (const x in postparam) {
       if (x === "person_id" || x === "member_group" || x === "company_id") {
         if (x === "member_group") {
-          text += `1,`;
+          text += `10,`;
         } else {
           text += `${postparam[x]},`;
         }
@@ -300,7 +289,6 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
       if (err) {
         return res.status(500).json({ message: "Input Valid", msg: err });
       }
-
       res.status(200).json({
         status: "ok",
         message:
@@ -315,9 +303,9 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
 });
 
 app.put("/api/upuser", jwtValidate, function (req, res) {
-  const ids = req.body.person_id;
-  const upparam = req.body.inputData;
-  const { outlanderNo } = upparam;
+  const upparam = req.body;
+  // return console.log(upparam);
+  const { outlanderNo, person_id } = upparam;
   let text = "";
   for (const x in upparam) {
     if (x === "person_id" || x === "member_group" || x === "company_id") {
@@ -328,10 +316,10 @@ app.put("/api/upuser", jwtValidate, function (req, res) {
   }
 
   text = text.slice(0, -1);
-  const sql = `UPDATE persons SET ${text} WHERE person_id = ${ids}`;
+  const sql = `UPDATE persons SET ${text} WHERE person_id = ${person_id}`;
   // return res.json(sql);
   const checkid_out = `SELECT * FROM persons WHERE outlanderNo = '${outlanderNo}'`;
-  const updateq = `UPDATE persons SET outlanderNo  = ' ' WHERE person_id = ${ids}`;
+  const updateq = `UPDATE persons SET outlanderNo  = ' ' WHERE person_id = ${person_id}`;
   connection.query(updateq, (err, results, fields) => {
     if (err) return res.status(500).json(err);
     connection.query(checkid_out, (err, results, fields) => {
@@ -355,8 +343,8 @@ app.put("/api/upuser", jwtValidate, function (req, res) {
 });
 
 app.post("/api/upcom", jwtValidate, (req, res) => {
-  const postcompany = req.body.company;
-  const postbranch = req.body.branch;
+  const postcompany = req.body;
+  // const postbranch = req.body.branch;
   const { c_iden, cpn_n } = postcompany;
   const validate = `SELECT * FROM company WHERE c_iden ='${c_iden}'`;
   connection.query(validate, (err, results, fields) => {
@@ -381,43 +369,47 @@ app.post("/api/upcom", jwtValidate, (req, res) => {
     // return res.json(sql);
     connection.query(sql, (err, results) => {
       if (err) return res.status(500).json(err);
-      let str = "";
-      for (const x in postbranch) {
-        str += `'${postbranch[x]}',`;
-      }
-      str += `${postcompany.member_group},`;
-      str += results.insertId;
-      const sqlb = `INSERT INTO branch(${Object.keys(
-        postbranch
-      )},member_group,company_id) VALUE(${str})`;
-      connection.query(sqlb, (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.status(200).json({
-          status: "ok",
-          message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
-        });
+      // let str = "";
+      // for (const x in postbranch) {
+      //   str += `'${postbranch[x]}',`;
+      // }
+      // str += `${postcompany.member_group},`;
+      // str += results.insertId;
+      // const sqlb = `INSERT INTO branch(${Object.keys(
+      //   postbranch
+      // )},member_group,company_id) VALUE(${str})`;
+      // connection.query(sqlb, (err, results) => {
+      // if (err) return res.status(500).json(err);
+      res.status(200).json({
+        status: "ok",
+        message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
       });
+      // });
     });
   });
 });
 
 app.put("/api/ecom", jwtValidate, (req, res) => {
-  const ids = req.body.cpn_id;
-  const upparam = req.body.inputData;
-  const { c_iden, cpn_n } = upparam;
+  const upparam = req.body;
+  const { c_iden, cpn_n, cpn_id } = upparam;
   let text = "";
   for (const x in upparam) {
-    if (x === "member_group") {
-      text += `${x}=${upparam[x]},`;
+    if (x === "member_group" || x === "cpn_id") {
+      if (x === "cpn_id") {
+        text += ``;
+      } else {
+        text += `${x}=${upparam[x]},`;
+      }
     } else {
       text += `${x}='${upparam[x]}',`;
     }
   }
   text = text.slice(0, -1);
-  const sql = `UPDATE company SET ${text} WHERE cpn_id = ${ids}`;
+
+  const sql = `UPDATE company SET ${text} WHERE cpn_id = ${cpn_id}`;
   // return res.json(sql);
   const checkid = `SELECT * FROM company WHERE c_iden = '${c_iden}'`;
-  const updateq = `UPDATE company SET c_iden  = ' ' WHERE cpn_id = ${ids}`;
+  const updateq = `UPDATE company SET c_iden  = ' ' WHERE cpn_id = ${cpn_id}`;
   connection.query(updateq, (err, results, fields) => {
     if (err) return res.status(500).json(err);
     connection.query(checkid, (err, results, fields) => {
@@ -439,7 +431,7 @@ app.put("/api/ecom", jwtValidate, (req, res) => {
   });
 });
 
-app.post("/api/members", jwtValidate, (req, res) => {
+app.post("/api/addmembers", jwtValidate, (req, res) => {
   const postmember = req.body.members;
   const postpermis = req.body.permis;
   const { username } = postmember;
