@@ -79,7 +79,10 @@ const jwtRefreshTokenValidate = (req, res, next) => {
     // return res.json(req.headers.authorization);
     const sql = `SELECT * FROM members WHERE mem_id = '${decodetoken.id}'`;
     connection.query(sql, (err, results) => {
-      if (err) return res.status(500).json({ err });
+      if (err)
+        return res
+          .status(500)
+          .json({ status: "Error", message: "Database Not Connect " });
       if (
         !bcrypt.compareSync(results[0].refreshtoken, req.headers.tokenrefresh)
       )
@@ -112,13 +115,13 @@ app.post("/login", (req, res) => {
         .json({ message: "Database Not Connect", msg: err });
     const index = results.findIndex((e) => e.username === user);
     if (!user || index < 0)
-      return res.status(400).json({ message: "User Invalid" });
+      return res.status(400).json({ status: "Error", message: "User Invalid" });
     const data = results[0];
 
     if (!bcrypt.compareSync(data.password, hash))
-      return res.status(400).json({
-        message: "Password Invalid",
-      });
+      return res
+        .status(400)
+        .json({ status: "Error", message: "Password Invalid" });
     const accessToken = jwtGenerate(data);
     const refresh_token = jwtRefreshTokenGenerate(data);
     const sqltoken = `UPDATE members SET refreshtoken='${refresh_token}' WHERE mem_id= ${data.mem_id}`;
@@ -129,7 +132,7 @@ app.post("/login", (req, res) => {
       const hashadd = bcrypt.hashSync(data.m_add.toString(), salt);
       const hashedit = bcrypt.hashSync(data.m_edit.toString(), salt);
       const hashdel = bcrypt.hashSync(data.m_del.toString(), salt);
-      // const admin = bcrypt.hashSync(data.admin.toString(), salt);
+      const admin = bcrypt.hashSync(data.m_admin.toString(), salt);
       if (err)
         return res
           .status(500)
@@ -152,7 +155,7 @@ app.post("/login", (req, res) => {
           add: hashadd,
           edit: hashedit,
           del: hashdel,
-          // role: admin,
+          role: admin,
         },
       });
     });
@@ -183,11 +186,12 @@ app.post("/api/upload", (req, res, next) => {
   const reqname = req.body.firstname;
   uploadFile.mv(`${__dirname}/public/files/${reqname}`, (err) => {
     if (err) {
-      return res.status(500).send({ message: "Doesn't Upload", msg: { err } });
+      return res.status(500).json({ message: "Doesn't Upload", msg: { err } });
     }
     res.status(200).json({
       status: "ok",
       message: `Has been upload ${reqname}`,
+      filename: reqname,
     });
   });
 });
@@ -211,6 +215,7 @@ app.post("/api/users", jwtValidate, (req, res) => {
         .json({ message: "Database Not Connect or Server OFFLINE" });
     }
     res.status(200).send({
+      status: "ok",
       data: results,
     });
   });
@@ -218,9 +223,10 @@ app.post("/api/users", jwtValidate, (req, res) => {
 
 app.post("/api/members", jwtValidate, (req, res) => {
   const group = req.body.member_group
-    ? `WHERE member_group = ${req.body.member_group}`
+    ? `WHERE member_group = ${req.body.member_group} and m_admin = 0`
     : ``;
   const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read FROM members  ${group}`;
+  // return console.log(sql);
   connection.query(sql, (err, results, fields) => {
     if (err) {
       return res
@@ -228,6 +234,7 @@ app.post("/api/members", jwtValidate, (req, res) => {
         .json({ message: "Database Not Connect or Server OFFLINE" });
     }
     res.status(200).send({
+      status: "ok",
       data: results,
     });
   });
@@ -247,6 +254,7 @@ app.post("/api/company", jwtValidate, (req, res) => {
         .json({ message: "Database Not Connect or Server OFFLINE" });
     }
     res.status(200).send({
+      status: "ok",
       data: results,
     });
   });
@@ -267,7 +275,7 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
     if (index >= 0)
       return res
         .status(200)
-        .json({ message: `รหัส : ${outlanderNo} นี้มีอยู่แล้ว` });
+        .json({ status: "ok", message: `รหัส : ${outlanderNo} นี้มีอยู่แล้ว` });
     let text = "";
     for (const x in postparam) {
       if (x === "person_id" || x === "member_group" || x === "company_id") {
@@ -287,7 +295,9 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
 
     connection.query(sql, (err, results, fields) => {
       if (err) {
-        return res.status(500).json({ message: "Input Valid", msg: err });
+        return res
+          .status(500)
+          .json({ status: "Error", message: "Input Valid", msg: err });
       }
       res.status(200).json({
         status: "ok",
@@ -314,29 +324,30 @@ app.put("/api/upuser", jwtValidate, function (req, res) {
       text += `${x}='${upparam[x]}',`;
     }
   }
-
   text = text.slice(0, -1);
   const sql = `UPDATE persons SET ${text} WHERE person_id = ${person_id}`;
   // return res.json(sql);
   const checkid_out = `SELECT * FROM persons WHERE outlanderNo = '${outlanderNo}'`;
-  const updateq = `UPDATE persons SET outlanderNo  = ' ' WHERE person_id = ${person_id}`;
-  connection.query(updateq, (err, results, fields) => {
-    if (err) return res.status(500).json(err);
-    connection.query(checkid_out, (err, results, fields) => {
-      if (err) return res.status(500).json({ message: "Database Not Connect" });
-      const index = results.findIndex((e) => e.outlanderNo === outlanderNo);
-      if (index >= 0) return res.json(`รหัส : ${outlanderNo} นี้มีอยู่แล้ว`);
-      connection.query(sql, (err, results, fields) => {
-        if (err)
-          return res.status(500).json({ message: "Database Not Connect " });
-        res.status(200).json({
-          status:
-            "Update ID: " +
-            outlanderNo +
-            " Name: " +
-            upparam.firstnameth +
-            " Successful",
-        });
+  connection.query(checkid_out, (err, results, fields) => {
+    if (err)
+      return res
+        .status(500)
+        .json({ status: "Error", message: "Database Not Connect" });
+    const index = results.findIndex((e) => e.outlanderNo === outlanderNo);
+    if (index > 0) return res.json(`รหัส : ${outlanderNo} นี้มีอยู่แล้ว`);
+    connection.query(sql, (err, results, fields) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ status: "Error", message: "Database Not Connect " });
+      res.status(200).json({
+        status: "ok",
+        message:
+          "Update ID: " +
+          outlanderNo +
+          " Name: " +
+          upparam.firstnameth +
+          " Successful",
       });
     });
   });
@@ -344,16 +355,20 @@ app.put("/api/upuser", jwtValidate, function (req, res) {
 
 app.post("/api/upcom", jwtValidate, (req, res) => {
   const postcompany = req.body;
-  // const postbranch = req.body.branch;
+  const username = req.headers.username ? req.headers.username : "";
   const { c_iden, cpn_n } = postcompany;
   const validate = `SELECT * FROM company WHERE c_iden ='${c_iden}'`;
   connection.query(validate, (err, results, fields) => {
-    if (err) return res.status(500).json(err);
+    if (err)
+      return res
+        .status(500)
+        .json({ status: "Error", message: "Database Not Connect " });
     const index = results.findIndex((e) => e.c_iden === c_iden);
     if (index >= 0)
-      return res
-        .status(400)
-        .json({ message: `บริษัทเลขที่ : ${c_iden}  มีอยู่แล้ว` });
+      return res.status(400).json({
+        status: "Error",
+        message: `เลขประจำตัวบริษัท: ${c_iden}  มีอยู่แล้ว`,
+      });
     let text = "";
     for (const x in postcompany) {
       if (x === "member_group") {
@@ -368,23 +383,29 @@ app.post("/api/upcom", jwtValidate, (req, res) => {
     )})VALUES (${text}) `;
     // return res.json(sql);
     connection.query(sql, (err, results) => {
-      if (err) return res.status(500).json(err);
-      // let str = "";
-      // for (const x in postbranch) {
-      //   str += `'${postbranch[x]}',`;
-      // }
-      // str += `${postcompany.member_group},`;
-      // str += results.insertId;
-      // const sqlb = `INSERT INTO branch(${Object.keys(
-      //   postbranch
-      // )},member_group,company_id) VALUE(${str})`;
-      // connection.query(sqlb, (err, results) => {
-      // if (err) return res.status(500).json(err);
-      res.status(200).json({
-        status: "ok",
-        message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
-      });
-      // });
+      if (err)
+        return res
+          .status(500)
+          .json({ status: "Error", message: "Database Not Connect " });
+      if (username !== "") {
+        const str = `UPDATE members SET company_id = ${results.insertId} WHERE username = "${username}"`;
+        console.log(str);
+        connection.query(str, (err, ress) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ status: "Error", message: "Database Not Connect " });
+          return res.status(200).json({
+            status: "ok",
+            companyNo: results.insertId,
+            message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
+          });
+        });
+      } else {
+        res
+          .status(200)
+          .json({ status: "ok", message: `บริษัท: ${cpn_n} เพิ่มสำเร็จแล้ว` });
+      }
     });
   });
 });
@@ -405,26 +426,30 @@ app.put("/api/ecom", jwtValidate, (req, res) => {
     }
   }
   text = text.slice(0, -1);
-
   const sql = `UPDATE company SET ${text} WHERE cpn_id = ${cpn_id}`;
   // return res.json(sql);
   const checkid = `SELECT * FROM company WHERE c_iden = '${c_iden}'`;
   const updateq = `UPDATE company SET c_iden  = ' ' WHERE cpn_id = ${cpn_id}`;
   connection.query(updateq, (err, results, fields) => {
-    if (err) return res.status(500).json(err);
+    if (err)
+      return res
+        .status(500)
+        .json({ status: "Error", message: "Database Not Connect " });
     connection.query(checkid, (err, results, fields) => {
       if (err)
         return res
           .status(500)
-          .json({ message: "Database Not Connect", msg: err });
+          .json({ status: "Error", message: "Database Not Connect " });
       const index = results.findIndex((e) => e.outlanderNo === outlanderNo);
       if (index >= 0) return res.json(`บริษัทเลขที่ : ${c_iden} นี้มีอยู่แล้ว`);
       connection.query(sql, (err, results, fields) => {
         if (err)
-          return res.status(500).json({ message: "Database Not Connect " });
+          return res
+            .status(500)
+            .json({ status: "Error", message: "Database Not Connect " });
         res.status(200).json({
-          status:
-            "Update รหัสบริษัท: " + c_iden + " Name: " + cpn_n + " Successful",
+          status: "ok",
+          message: ` เลขประจำตัวบริษัท: ${c_iden} Name: ${cpn_n} แก้ไขสำเร็จ`,
         });
       });
     });
@@ -432,44 +457,87 @@ app.put("/api/ecom", jwtValidate, (req, res) => {
 });
 
 app.post("/api/addmembers", jwtValidate, (req, res) => {
-  const postmember = req.body.members;
-  const postpermis = req.body.permis;
+  const postmember = req.body;
   const { username } = postmember;
   const validate = `SELECT * FROM members WHERE username ='${username}'`;
   connection.query(validate, (err, resultsva, fields) => {
     const index = resultsva.findIndex((e) => e.username === username);
     if (index >= 0)
-      return res.status(400).json({ message: `username : ${username}  ซ้ำ` });
-    if (err) return res.status(500).json(err);
-    let text = "";
-    for (const x in postpermis) {
-      text += `${postpermis[x]},`;
-    }
-    text = text.slice(0, -1);
-    const permis = `INSERT INTO permission(${Object.keys(
-      postpermis
-    )})VALUES (${text}) `;
-    connection.query(permis, (err, resultsper, fields) => {
-      let str = "";
-      if (err) return res.status(500).json(err);
-      for (const x in postmember) {
-        if (x === "piority") {
-          str += `${resultsper.insertId},`;
-        } else {
-          str += `'${postmember[x]}',`;
-        }
+      return res
+        .status(400)
+        .json({ status: "Error", message: `username : ${username}  ซ้ำ` });
+    if (err)
+      return res
+        .status(500)
+        .json({ status: "Error", message: "Database Not Connect " });
+    let str = "";
+    for (const x in postmember) {
+      if (
+        x === "member_group" ||
+        x === "m_read" ||
+        x === "m_add" ||
+        x === "m_edit"
+      ) {
+        str += `${postmember[x]},`;
+      } else {
+        str += `"${postmember[x]}",`;
       }
-      str = str.slice(0, -1);
-      const sql = `INSERT INTO members(${Object.keys(
-        postmember
-      )})VALUES(${str})`;
-      // return res.json(sql);
-      connection.query(sql, (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.status(200).json({
-          status: "ok",
-          message: `Add Username: ${username}  Successful`,
-        });
+    }
+    str = str.slice(0, -1);
+    const sql = `INSERT INTO members(${Object.keys(
+      postmember
+    )},m_admin,m_root)VALUES(${str},0,0)`;
+    connection.query(sql, (err, results) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ status: "Error", message: "Database Not Connect " });
+      res.status(200).json({
+        status: "ok",
+        message: `Add Username: ${username}  Successful`,
+      });
+    });
+  });
+});
+app.put("/api/emembers", (req, res) => {
+  const postmember = req.body;
+  const { mem_id, username, member_name } = postmember;
+  let text = "";
+  for (const x in postmember) {
+    if (
+      x === "member_group" ||
+      x === "mem_id" ||
+      x === "m_read" ||
+      x === "m_add" ||
+      x === "m_edit"
+    ) {
+      if (x === "mem_id") {
+        text += ``;
+      } else {
+        text += `${x}=${postmember[x]},`;
+      }
+    } else {
+      text += `${x}='${postmember[x]}',`;
+    }
+  }
+  text = text.slice(0, -1);
+  const sql = `UPDATE members SET ${text} WHERE mem_id = ${mem_id}`;
+  const checkid = `SELECT * FROM members WHERE username = '${username}'`;
+  connection.query(checkid, (err, results, fields) => {
+    if (err)
+      return res
+        .status(500)
+        .json({ status: "Error", message: "Database Not Connect " });
+    const index = results.findIndex((e) => e.username === username);
+    if (index > 0) return res.json(`ผู้ดูแลระบบ : ${username} นี้มีอยู่แล้ว`);
+    connection.query(sql, (err, results, fields) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ status: "Error", message: "Database Not Connect " });
+      res.status(200).json({
+        status: "ok",
+        message: `ผู้ดูแลระบบ: ${username} Name: ${member_name} Successful`,
       });
     });
   });
@@ -487,32 +555,27 @@ app.delete("/api/del", jwtValidate, (req, res) => {
   // return res.json(a);
   switch (a) {
     case "mem_id":
-      const sql = `SELECT * FROM members WHERE mem_id = ${id}`;
-      // return res.json(sql);
-      connection.query(sql, (err, results) => {
-        if (err) return res.status(500).json({ message: err });
-        const index = results.findIndex((e) => e.mem_id === id);
-        if (index >= 0)
-          return res.status(400).json({ message: `ID: ${id} Notfound in DB` });
-        const { member_name, piority } = results[0];
-        connection.query(
-          `DELETE FROM permission WHERE per_id= ${piority}`,
-          (err) => {
-            if (err) return res.status(500).json({ message: err });
-            res
-              .status(200)
-              .json({ message: `User : ${member_name} has been delete` });
-          }
-        );
+      connection.query(`DELETE FROM members WHERE ${a}= ${id}`, (err) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ status: "Error", message: "Database Not Connect " });
+        res
+          .status(200)
+          .json({ status: "ok", message: `User : ${id} has been delete` });
       });
-
       break;
     case "person_id":
       connection.query(
         `DELETE FROM persons WHERE ${a}= ${id}`,
         (err, results) => {
-          if (err) return res.status(500).json({ message: err });
-          res.status(200).json({ message: `PersonID: ${id} has been delete` });
+          if (err)
+            return res
+              .status(500)
+              .json({ status: "Error", message: "Database Not Connect " });
+          res
+            .status(200)
+            .json({ status: "ok", message: `PersonID: ${id} has been delete` });
         }
       );
       break;
@@ -520,8 +583,14 @@ app.delete("/api/del", jwtValidate, (req, res) => {
       connection.query(
         `DELETE FROM company WHERE ${a}= ${id}`,
         (err, results) => {
-          if (err) return res.status(500).json({ message: err });
-          res.status(200).json({ message: `CompanyID: ${id} has been delete` });
+          if (err)
+            return res
+              .status(500)
+              .json({ status: "Error", message: "Database Not Connect " });
+          res.status(200).json({
+            status: "ok",
+            message: `CompanyID: ${id} has been delete`,
+          });
         }
       );
       break;
