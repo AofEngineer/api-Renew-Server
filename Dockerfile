@@ -1,13 +1,13 @@
 FROM node:18
 
-WORKDIR /app
+WORKDIR /usr/expressdocker
 
 COPY package*.json ./
 
-RUN npm ci
-
 COPY . .
- 
-EXPOSE 3000
 
-CMD ["npx", "serve", "dist"]
+RUN npm ci
+ 
+EXPOSE 5000
+
+CMD ["npm", "start"]

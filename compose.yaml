@@ -9,7 +9,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./initsql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password
     networks:
       - mynetwork
@@ -27,7 +27,7 @@ services:
     depends_on:
       - db
   api:
-    build: ./api-ser/
+    build: .
     ports:
       - "5000:5000"
     depends_on:
@@ -38,17 +38,10 @@ services:
       DB_PASSWORD: password
       DB_NAME: renewlabour
     networks:
-      - mynetwork  
+      - mynetwork
+    volumes:
+      - ./public/files:/usr/expressdocker/files
+
 networks:
   mynetwork:
     driver: bridge
-
-web:
-    build: ./renew/
-    ports: 
-      - "443:443"
-    environment:
-      - REACT_API_TITLE=http://54.252.162.66:5000
-    networks:
-      - mynetwork
-        
