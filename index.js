@@ -24,7 +24,7 @@ const connection = mysql.createPool({
   host: enva.DB_HOST,
   user: enva.DB_USER,
   password: enva.DB_PASSWORD,
-  database: enva.DB_DATABASE,
+  database: enva.DB_NAME,
 });
 
 const jwtGenerate = (user) => {
@@ -170,7 +170,7 @@ app.post("/auth", jwtRefreshTokenValidate, (req, res) => {
 
 app.get("/download/:filename", (req, res) => {
   const fliename = req.params.filename;
-  const filePath = `${__dirname}/public/files/${fliename}`;
+  const filePath = `usr/expressdocker/files/${fliename}`;
   res.download(filePath, (err) => {
     if (err) {
       res.json({
@@ -184,7 +184,7 @@ app.get("/download/:filename", (req, res) => {
 app.post("/api/upload", (req, res, next) => {
   const uploadFile = req.files.file;
   const reqname = req.body.firstname;
-  uploadFile.mv(`${__dirname}/public/files/${reqname}`, (err) => {
+  uploadFile.mv(`/files/${reqname}`, (err) => {
     if (err) {
       return res.status(500).json({ message: "Doesn't Upload", msg: { err } });
     }

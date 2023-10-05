@@ -40,7 +40,7 @@ services:
     networks:
       - mynetwork
     volumes:
-      - ./public/files:/usr/expressdocker/files
+      - ./files:/usr/expressdocker/files
 
 networks:
   mynetwork:

@@ -2,6 +2,8 @@ FROM node:18
 
 WORKDIR /usr/expressdocker
 
+RUN mkdir files
+
 COPY package*.json ./
 
 COPY . .
