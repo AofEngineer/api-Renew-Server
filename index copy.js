@@ -33,7 +33,27 @@ const connection = mysql.createPool({
 // in the directory
 // getCurrentFilenames();
 
-const file = (req, res, next) => {};
+const file = (req, res, next) => {
+  let str = "";
+  fs.readdirSync(__dirname).forEach((file) => {
+    str += `${file},`;
+  });
+  // console.log(str);
+  let c = str.match(/directory_one/);
+  // console.log(c[0]);
+
+  // let a = [];
+  a = str.split(",");
+  // console.log(a);
+
+  // console.log("\n");
+  fs.mkdir(path.join(".", "abc"), (err) => {
+    if (err) {
+      return console.error(err);
+    }
+    console.log("Directory created successfully!");
+  });
+};
 fs.rm("directory_one", { recursive: true }, () => {
   let a = getCurrentFilenames();
   const c = (e) => e === "directory_one";
@@ -51,27 +71,7 @@ fs.rm("directory_one", { recursive: true }, () => {
 
 // Function to get current filenames
 // in directory
-function getCurrentFilenames() {
-  let str = "";
-  fs.readdirSync(__dirname).forEach((file) => {
-    str += `${file},`;
-  });
-  // console.log(str);
-  let c = str.match(/directory_one/);
-  // console.log(c[0]);
-
-  // let a = [];
-  a = str.split(",");
-  // console.log(a);
-  return a;
-  // console.log("\n");
-}
-// fs.mkdir(path.join(".", "abc"), (err) => {
-//   if (err) {
-//     return console.error(err);
-//   }
-//   console.log("Directory created successfully!");
-// });
+function getCurrentFilenames() {}
 
 const jwtGenerate = (user) => {
   const accessToken = jwt.sign(
