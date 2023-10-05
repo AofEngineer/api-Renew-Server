@@ -29,6 +29,50 @@ const connection = mysql.createPool({
   database: enva.DB_NAME,
 });
 
+// Get the current filenames
+// in the directory
+// getCurrentFilenames();
+
+const file = (req, res, next) => {};
+fs.rm("directory_one", { recursive: true }, () => {
+  let a = getCurrentFilenames();
+  const c = (e) => e === "directory_one";
+
+  console.log(a.findIndex(c));
+
+  let b = "";
+
+  if (a.findIndex(c)) {
+    console.log("Folder Not Deleted!");
+  } else {
+    console.log("Folder Deleted!");
+  }
+});
+
+// Function to get current filenames
+// in directory
+function getCurrentFilenames() {
+  let str = "";
+  fs.readdirSync(__dirname).forEach((file) => {
+    str += `${file},`;
+  });
+  // console.log(str);
+  let c = str.match(/directory_one/);
+  // console.log(c[0]);
+
+  // let a = [];
+  a = str.split(",");
+  // console.log(a);
+  return a;
+  // console.log("\n");
+}
+// fs.mkdir(path.join(".", "abc"), (err) => {
+//   if (err) {
+//     return console.error(err);
+//   }
+//   console.log("Directory created successfully!");
+// });
+
 const jwtGenerate = (user) => {
   const accessToken = jwt.sign(
     { user: user.username, id: user.mem_id },
