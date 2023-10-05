@@ -61,7 +61,6 @@ CREATE TABLE `members` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
-
 CREATE TABLE `persons` (
   `person_id` int(11) NOT NULL,
   `outlanderNo` varchar(15) NOT NULL,
