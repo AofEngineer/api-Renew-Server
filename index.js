@@ -158,6 +158,7 @@ app.post("/login", (req, res) => {
           edit: hashedit,
           del: hashdel,
           role: admin,
+          picpath: data.m_picpath,
         },
       });
     });
@@ -227,19 +228,20 @@ app.post("/api/members", jwtValidate, (req, res) => {
   const group = req.body.member_group
     ? `WHERE member_group = ${req.body.member_group} and m_admin = 0`
     : ``;
-  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read FROM members  ${group}`;
+  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read ,m_picpath FROM members  ${group}`;
   // return console.log(sql);
-  connection.query(sql, (err, results, fields) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Database Not Connect or Server OFFLINE" });
-    }
-    res.status(200).send({
-      status: "ok",
-      data: results,
+  try {
+    connection.query(sql, (err, results, fields) => {
+      res.status(200).send({
+        status: "ok",
+        data: results,
+      });
     });
-  });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: "Database Not Connect or Server OFFLINE" });
+  }
 });
 
 app.post("/api/company", jwtValidate, (req, res) => {
