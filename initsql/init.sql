@@ -1,15 +1,14 @@
 
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+07:00";
 
 
 CREATE TABLE `member_group` (
-  `id` int(11) NOT NULL
+  `id` int(11) NOT NULL,
+  `company_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-INSERT INTO `member_group` (`id`) VALUES
-(1);
 
 CREATE TABLE `branch` (
   `branch_id` int(100) NOT NULL,
@@ -18,6 +17,9 @@ CREATE TABLE `branch` (
   `member_group` int(11) NOT NULL,
   `company_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+INSERT INTO `member_group` (`id`) VALUES
+(1);
 
 CREATE TABLE `company` (
   `cpn_id` int(11) NOT NULL,
@@ -37,8 +39,12 @@ CREATE TABLE `company` (
   `cpn_zip` varchar(100) NOT NULL,
   `c_iden` varchar(13) NOT NULL,
   `member_group` int(11) NOT NULL,
-  `branch_id` int(11) NOT NULL
+  `branch_id` int(11) NOT NULL,
+  `logo` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+INSERT INTO `company` (`cpn_id`, `cpn_n`, `cpn_build`, `cpn_ad`, `cpn_fl`, `cpn_vill`, `cpn_room`, `cpn_moo`, `cpn_soi`, `cpn_st`, `cpn_coun`, `cpn_subdist`, `cpn_dist`, `cpn_prov`, `cpn_zip`, `c_iden`, `member_group`, `branch_id`) VALUES
+(0, 'ว่างงาน', NULL, '', NULL, NULL, NULL, NULL, NULL, NULL, '', '', '', '', '', '', 1, 0);
 
 CREATE TABLE `members` (
   `mem_id` int(11) NOT NULL,
@@ -57,9 +63,9 @@ CREATE TABLE `members` (
   `m_edit` tinyint(1) NOT NULL,
   `m_del` int(11) NOT NULL,
   `m_admin` tinyint(1) NOT NULL,
-  `m_root` tinyint(1) NOT NULL
+  `m_root` tinyint(1) NOT NULL,
+  `m_picpath` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
 
 CREATE TABLE `persons` (
   `person_id` int(11) NOT NULL,
@@ -93,9 +99,6 @@ CREATE TABLE `persons` (
   `other` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-INSERT INTO `company` (`cpn_id`, `cpn_n`, `cpn_build`, `cpn_ad`, `cpn_fl`, `cpn_vill`, `cpn_room`, `cpn_moo`, `cpn_soi`, `cpn_st`, `cpn_coun`, `cpn_subdist`, `cpn_dist`, `cpn_prov`, `cpn_zip`, `c_iden`, `member_group`, `branch_id`) VALUES
-(0, 'ว่างงาน', NULL, '', NULL, NULL, NULL, NULL, NULL, NULL, '', '', '', '', '', '', 1, 0);
-
 ALTER TABLE `branch`
   ADD PRIMARY KEY (`branch_id`),
   ADD KEY `member_group` (`member_group`),
@@ -105,13 +108,13 @@ ALTER TABLE `company`
   ADD PRIMARY KEY (`cpn_id`),
   ADD KEY `member_group` (`member_group`);
 
-
 ALTER TABLE `members`
   ADD PRIMARY KEY (`mem_id`),
   ADD KEY `member_group` (`member_group`);
 
 ALTER TABLE `member_group`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `company_id` (`company_id`) USING BTREE;
 
 ALTER TABLE `persons`
   ADD PRIMARY KEY (`person_id`),
@@ -145,4 +148,3 @@ ALTER TABLE `members`
 ALTER TABLE `persons`
   ADD CONSTRAINT `persons_ibfk_3` FOREIGN KEY (`member_group`) REFERENCES `member_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
-

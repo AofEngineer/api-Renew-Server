@@ -20,7 +20,7 @@ app.use(morgan("dev"));
 app.use(cors());
 app.use(cookieParser());
 app.use(fileUpload());
-app.use("/public", express.static(__dirname + "/public"));
+app.use("/files", express.static(__dirname + "/files"));
 
 const connection = mysql.createPool({
   host: enva.DB_HOST,
@@ -29,6 +29,176 @@ const connection = mysql.createPool({
   database: enva.DB_NAME,
 });
 
+const currentFile = (req, res, next) => {
+  const company = req.body.cpn_n;
+  const per =
+    req.body.person !== undefined
+      ? `${req.body.person.outlanderNo}-${req.body.person.firstname}`
+      : "";
+  const mem =
+    req.body.members !== undefined
+      ? `${req.body.members.member_name}-${req.body.members.member_lastname}`
+      : "";
+  let arc = [],
+    arm = [],
+    arp = [];
+
+  try {
+    fs.readdirSync(`./files`).forEach((file) => {
+      arc.push(file);
+    });
+    const c = arc.filter((e) => e === company).length;
+    if (c !== undefined) req.noc = c;
+    if (c > 0) {
+      if (mem !== undefined || mem !== "") {
+        fs.readdirSync(`./files/${company}/members`).forEach((file) => {
+          arm.push(file);
+        });
+        const m = arm.filter((e) => e === mem).length;
+        if (m !== undefined) req.nom = m;
+      }
+      if (per !== undefined || per !== "") {
+        fs.readdirSync(`./files/${company}/persons`).forEach((file) => {
+          arp.push(file);
+        });
+        const p = arp.filter((e) => e === per).length;
+        if (p !== undefined) req.nop = p;
+      }
+    }
+    next();
+  } catch (err) {
+    res.status(403).json({ message: err });
+  }
+};
+const file = (req, res, next) => {
+  const company = req.body.cpn_n !== undefined ? req.body.cpn_n : "";
+  const per =
+    req.body.person !== undefined
+      ? `${req.body.person.outlanderNo}-${req.body.person.firstname}`
+      : "";
+  const mem =
+    req.body.members !== undefined
+      ? `${req.body.members.member_name}-${req.body.members.member_lastname}`
+      : "";
+  try {
+    if (req.noc <= 0 && company !== "") {
+      fs.mkdirSync(path.join(`./files`, company));
+      fs.mkdirSync(path.join(`./files/${company}`, "members"));
+      fs.mkdirSync(path.join(`./files/${company}`, "persons"));
+      req.pathcom = `./files/${company}`;
+    }
+    if (req.nom <= 0 && mem !== "") {
+      fs.mkdirSync(path.join(`./files/${company}/members`, mem));
+      req.pathmem = `./files/${company}/${mem}`;
+    }
+    if (req.nop <= 0 && per !== "") {
+      fs.mkdirSync(path.join(`./files/${company}/persons`, per));
+      req.pathper = `./files/${company}/${per}`;
+    }
+    next();
+  } catch (err) {
+    res.status(403).json({ message: "err" });
+  }
+};
+
+const deletefile = (req, res, next) => {
+  const request = `${req.body.firstnameth}-${req.body.outlanderNo}`;
+  let status = "";
+  try {
+    if (req.no === 0) {
+      try {
+        fs.rm(`./files/${request}`, { recursive: true }, (err) => {
+          if (err) return err;
+        });
+        status = `Directoryfile name: ${request} Deleted`;
+      } catch (err) {
+        return err;
+      }
+    } else {
+      status = `Directoryfile name: ${request} Not Deleted`;
+    }
+
+    req.successful = status;
+    next();
+  } catch (err) {
+    return res.status(403).json(err);
+  }
+};
+
+const Addcompany = (req, res, next) => {
+  const postcompany =
+    req.body.company !== undefined ? req.body.company : req.body;
+  const username =
+    req.headers.username !== undefined ? req.headers.username : "";
+  const { c_iden, cpn_n } = postcompany;
+  const validate = `SELECT * FROM company WHERE c_iden ='${c_iden}'`;
+  connection.query(validate, (err, results, fields) => {
+    if (err)
+      return res
+        .status(500)
+        .json({ status: "Error", message: "Database Not Connect " });
+    const index = results.findIndex((e) => e.c_iden === c_iden);
+    if (index >= 0)
+      return res.status(400).json({
+        status: "Error",
+        message: `เลขประจำตัวบริษัท: ${c_iden}  มีอยู่แล้ว`,
+      });
+    let text = "";
+    for (const x in postcompany) {
+      if (x === "member_group") {
+        text += `${postcompany[x]},`;
+      } else {
+        text += `'${postcompany[x]}',`;
+      }
+    }
+    text = text.slice(0, -1);
+    const sql = `INSERT INTO company(${Object.keys(
+      postcompany
+    )})VALUES (${text}) `;
+    try {
+      connection.query(sql, (err, results) => {
+        if (err) throw new Error("Database Not Connect!");
+        if (username !== "") {
+          const str = `UPDATE members SET company_id = ${results.insertId} WHERE username = "${username}"`;
+          connection.query(str, (err, ress) => {
+            if (err) throw new Error("Database Not Connect!");
+            res.status(200).json({
+              status: "ok",
+              companyNo: results.insertId,
+              companyName: cpn_n,
+              message:
+                "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
+            });
+          });
+        } else {
+          res.status(200).json({
+            status: "ok",
+            message: `บริษัท: ${cpn_n} เพิ่มสำเร็จแล้ว`,
+          });
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ message: err });
+    }
+  });
+};
+
+app.post("/test", currentFile, file, (req, res, next) => {
+  res.json({
+    status: req.successful,
+    path: req.pathname,
+    pathdir: req.dirname,
+  });
+});
+app.post("/testdel", currentFile, deletefile, (req, res, next) => {
+  res.json(req.successful);
+});
+
+app.post("/company", currentFile, file, (req, res, next) => {
+  if (req.pathcom !== undefined || req.noc >= 0) {
+    Addcompany(req, res, next);
+  }
+});
 const jwtGenerate = (user) => {
   const accessToken = jwt.sign(
     { user: user.username, id: user.mem_id },
@@ -109,7 +279,7 @@ const jwtRefreshTokenValidate = (req, res, next) => {
 
 app.post("/login", (req, res) => {
   const { user, hash } = req.body;
-  const sql = `SELECT * FROM members WHERE username = '${user}'`;
+  const sql = `SELECT members.* ,c.cpn_id,c.cpn_n FROM members LEFT JOIN company as c ON members.company_id = c.cpn_id WHERE username = '${user}'`;
   connection.query(sql, (err, results) => {
     if (err)
       return res
@@ -152,13 +322,13 @@ app.post("/login", (req, res) => {
           email: data.email,
           tel: data.tel,
           companyNo: data.company_id,
+          companyName: data.cpn_n,
           group: data.member_group,
           read: hashread,
           add: hashadd,
           edit: hashedit,
           del: hashdel,
           role: admin,
-          picpath: data.m_picpath,
         },
       });
     });
@@ -172,8 +342,15 @@ app.post("/auth", jwtRefreshTokenValidate, (req, res) => {
 });
 
 app.get("/download/:filename", (req, res) => {
-  const fliename = req.params.filename;
-  const filePath = `./files/${fliename}`;
+  const param = req.params;
+  const { filename } = param;
+  let array = [];
+  let text = "";
+  array = filename.split("_");
+  for (const x in array) {
+    text += `/${array[x]}`;
+  }
+  const filePath = `./files${text}`;
   res.download(filePath, (err) => {
     if (err) {
       res.json({
@@ -183,33 +360,46 @@ app.get("/download/:filename", (req, res) => {
   });
 });
 
-//upload file
-app.post("/api/upload", (req, res, next) => {
+///////////////////////// upload file  /////////////////////////
+app.post("/api/upload", currentFile, (req, res, next) => {
   const uploadFile = req.files.file;
+  const cpn = req.body.cpn_n;
+  const per = req.body.person ? req.body.person : "";
+  const mem = req.body.members ? req.body.members : "";
   const reqname = req.body.firstname;
-  uploadFile.mv(`./files/${reqname}`, (err) => {
-    if (err) {
-      return res.status(500).json({ message: "Doesn't Upload", msg: { err } });
+  const ext = path.extname(uploadFile.name);
+  try {
+    if (per !== "" && per !== undefined) {
+      uploadFile.mv(`./files/${cpn}/persons/${per}/${reqname}${ext}`, (err) => {
+        if (err) return res.status(500).json({ message: err });
+        res.status(200).json({
+          status: "ok",
+          message: `Has been upload ${reqname}`,
+          filename: reqname,
+        });
+      });
     }
-    res.status(200).json({
-      status: "ok",
-      message: `Has been upload ${reqname}`,
-      filename: reqname,
-    });
-  });
+    if (mem !== "" && mem !== undefined) {
+      uploadFile.mv(`./files/${cpn}/members/${mem}/${reqname}${ext}`, (err) => {
+        if (err) return res.status(500).json({ message: err });
+        res.status(200).json({
+          status: "ok",
+          message: `Has been upload ${reqname}`,
+          filename: reqname,
+        });
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err });
+  }
 });
-
-//upload file
-
-// jwtValidate,
-// My SQL Server
+///////////////////////// upload file  /////////////////////////
 ///////////////////////// GET /////////////////////////
 app.post("/api/users", jwtValidate, (req, res) => {
   if (req.body.member_group) return res.status();
   const group = req.body.member_group
     ? `WHERE p.member_group = ${req.body.member_group}`
     : ``;
-
   const sqlget = `SELECT p.*, c.* FROM persons as p LEFT JOIN company as c ON p.company_id = c.cpn_id ${group}`;
   connection.query(sqlget, (err, results, fields) => {
     if (err) {
@@ -228,29 +418,7 @@ app.post("/api/members", jwtValidate, (req, res) => {
   const group = req.body.member_group
     ? `WHERE member_group = ${req.body.member_group} and m_admin = 0`
     : ``;
-  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read ,m_picpath FROM members  ${group}`;
-  // return console.log(sql);
-  try {
-    connection.query(sql, (err, results, fields) => {
-      res.status(200).send({
-        status: "ok",
-        data: results,
-      });
-    });
-  } catch (err) {
-    return res
-      .status(500)
-      .json({ message: "Database Not Connect or Server OFFLINE" });
-  }
-});
-
-app.post("/api/company", jwtValidate, (req, res) => {
-  const group = req.body.member_group
-    ? `WHERE c.member_group = ${req.body.member_group}`
-    : ``;
-  // const cpn_id = req.body.cpn_id ? `WHERE cpn_id = ${req.body.cpn_id}` : ``;
-  const sql = `SELECT c.*,b.branchname,b.branch_no,b.branch_id FROM company as c  LEFT JOIN branch as b ON c.branch_id = b.branch_id ${group}`;
-  // console.log(sql);
+  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read FROM members  ${group}`;
   connection.query(sql, (err, results, fields) => {
     if (err) {
       return res
@@ -263,11 +431,29 @@ app.post("/api/company", jwtValidate, (req, res) => {
     });
   });
 });
+
+app.post("/api/company", jwtValidate, (req, res) => {
+  const group = req.body.member_group
+    ? `WHERE c.member_group = ${req.body.member_group}`
+    : ``;
+  const sql = `SELECT c.*,b.branchname,b.branch_no,b.branch_id FROM company as c  LEFT JOIN branch as b ON c.branch_id = b.branch_id ${group}`;
+  connection.query(sql, (err, results, fields) => {
+    if (err) {
+      return res
+        .status(500)
+        .json({ message: "Database Not Connect or Server OFFLINE" });
+    }
+    res.status(200).send({
+      status: "ok",
+      data: results,
+    });
+  });
+});
+
 ///////////////////////// GET /////////////////////////
-app.post("/api/plususers", jwtValidate, (req, res) => {
-  const postparam = req.body;
+app.post("/api/plususers", jwtValidate, currentFile, file, (req, res, next) => {
+  const postparam = req.body.person ? req.body.person : req.body;
   const { outlanderNo } = postparam;
-  // return res.json(postparam);
   const validate = `SELECT * FROM persons WHERE outlanderNo ='${outlanderNo}'`;
   connection.query(validate, (err, results, fields) => {
     if (err) {
@@ -296,29 +482,26 @@ app.post("/api/plususers", jwtValidate, (req, res) => {
     const sql = `INSERT INTO persons(${Object.keys(
       postparam
     )})VALUES (${text}) `;
-
-    connection.query(sql, (err, results, fields) => {
-      if (err) {
-        return res
-          .status(500)
-          .json({ status: "Error", message: "Input Valid", msg: err });
-      }
-      res.status(200).json({
-        status: "ok",
-        message:
-          "Insert ID: " +
-          outlanderNo +
-          " Name: " +
-          postparam.firstnameth +
-          " Successful",
+    if (req.pathper !== undefined || req.pathper !== "") {
+      connection.query(sql, (err, results, fields) => {
+        if (err) {
+          return res
+            .status(500)
+            .json({ status: "Error", message: "Input Valid", msg: err });
+        }
+        res.status(200).json({
+          status: "ok",
+          message: `Insert ID: ${outlanderNo} Name: ${postparam.firstnameth} Successful`,
+        });
       });
-    });
+    } else {
+      res.json({ message: "Not Create Folder" });
+    }
   });
 });
 
 app.put("/api/upuser", jwtValidate, function (req, res) {
   const upparam = req.body;
-  // return console.log(upparam);
   const { outlanderNo, person_id } = upparam;
   let text = "";
   for (const x in upparam) {
@@ -357,62 +540,7 @@ app.put("/api/upuser", jwtValidate, function (req, res) {
   });
 });
 
-app.post("/api/upcom", jwtValidate, (req, res) => {
-  const postcompany = req.body;
-  const username = req.headers.username ? req.headers.username : "";
-  const { c_iden, cpn_n } = postcompany;
-  const validate = `SELECT * FROM company WHERE c_iden ='${c_iden}'`;
-  connection.query(validate, (err, results, fields) => {
-    if (err)
-      return res
-        .status(500)
-        .json({ status: "Error", message: "Database Not Connect " });
-    const index = results.findIndex((e) => e.c_iden === c_iden);
-    if (index >= 0)
-      return res.status(400).json({
-        status: "Error",
-        message: `เลขประจำตัวบริษัท: ${c_iden}  มีอยู่แล้ว`,
-      });
-    let text = "";
-    for (const x in postcompany) {
-      if (x === "member_group") {
-        text += `${postcompany[x]},`;
-      } else {
-        text += `'${postcompany[x]}',`;
-      }
-    }
-    text = text.slice(0, -1);
-    const sql = `INSERT INTO company(${Object.keys(
-      postcompany
-    )})VALUES (${text}) `;
-    // return res.json(sql);
-    connection.query(sql, (err, results) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ status: "Error", message: "Database Not Connect " });
-      if (username !== "") {
-        const str = `UPDATE members SET company_id = ${results.insertId} WHERE username = "${username}"`;
-        console.log(str);
-        connection.query(str, (err, ress) => {
-          if (err)
-            return res
-              .status(500)
-              .json({ status: "Error", message: "Database Not Connect " });
-          return res.status(200).json({
-            status: "ok",
-            companyNo: results.insertId,
-            message: "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
-          });
-        });
-      } else {
-        res
-          .status(200)
-          .json({ status: "ok", message: `บริษัท: ${cpn_n} เพิ่มสำเร็จแล้ว` });
-      }
-    });
-  });
-});
+app.post("/api/upcom", jwtValidate, Addcompany, (req, res, next) => {});
 
 app.put("/api/ecom", jwtValidate, (req, res) => {
   const upparam = req.body;
@@ -460,49 +588,58 @@ app.put("/api/ecom", jwtValidate, (req, res) => {
   });
 });
 
-app.post("/api/addmembers", jwtValidate, (req, res) => {
-  const postmember = req.body;
-  const { username } = postmember;
-  const validate = `SELECT * FROM members WHERE username ='${username}'`;
-  connection.query(validate, (err, resultsva, fields) => {
-    const index = resultsva.findIndex((e) => e.username === username);
-    if (index >= 0)
-      return res
-        .status(400)
-        .json({ status: "Error", message: `username : ${username}  ซ้ำ` });
-    if (err)
-      return res
-        .status(500)
-        .json({ status: "Error", message: "Database Not Connect " });
-    let str = "";
-    for (const x in postmember) {
-      if (
-        x === "member_group" ||
-        x === "m_read" ||
-        x === "m_add" ||
-        x === "m_edit"
-      ) {
-        str += `${postmember[x]},`;
-      } else {
-        str += `"${postmember[x]}",`;
-      }
-    }
-    str = str.slice(0, -1);
-    const sql = `INSERT INTO members(${Object.keys(
-      postmember
-    )},m_admin,m_root)VALUES(${str},0,0)`;
-    connection.query(sql, (err, results) => {
+app.post(
+  "/api/addmembers",
+  jwtValidate,
+  currentFile,
+  file,
+  (req, res, next) => {
+    const postmember = req.body.members;
+    const { username } = postmember;
+    const validate = `SELECT * FROM members WHERE username ='${username}'`;
+    connection.query(validate, (err, resultsva, fields) => {
+      const index = resultsva.findIndex((e) => e.username === username);
+      if (index >= 0)
+        return res
+          .status(400)
+          .json({ status: "Error", message: `username : ${username}  ซ้ำ` });
       if (err)
         return res
           .status(500)
           .json({ status: "Error", message: "Database Not Connect " });
-      res.status(200).json({
-        status: "ok",
-        message: `Add Username: ${username}  Successful`,
-      });
+      let str = "";
+      for (const x in postmember) {
+        if (
+          x === "member_group" ||
+          x === "m_read" ||
+          x === "m_add" ||
+          x === "m_edit"
+        ) {
+          str += `${postmember[x]},`;
+        } else {
+          str += `"${postmember[x]}",`;
+        }
+      }
+      str = str.slice(0, -1);
+      const sql = `INSERT INTO members(${Object.keys(
+        postmember
+      )},m_admin,m_root)VALUES(${str},0,0)`;
+      if (req.pathmem !== undefined || req.pathmem !== "") {
+        connection.query(sql, (err, results) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ status: "Error", message: "Database Not Connect " });
+          res.status(200).json({
+            status: "ok",
+            message: `Add Username: ${username}  Successful`,
+          });
+        });
+      }
     });
-  });
-});
+  }
+);
+
 app.put("/api/emembers", (req, res) => {
   const postmember = req.body;
   const { mem_id, username, member_name } = postmember;
@@ -548,7 +685,6 @@ app.put("/api/emembers", (req, res) => {
 });
 
 app.delete("/api/del", jwtValidate, (req, res) => {
-  // const del = Object.keys(req.body);
   const ids = req.body;
   let id = "";
   let a = "";
@@ -556,7 +692,6 @@ app.delete("/api/del", jwtValidate, (req, res) => {
     id += `${ids[x]}`;
     a += `${x}`;
   }
-  // return res.json(a);
   switch (a) {
     case "mem_id":
       connection.query(`DELETE FROM members WHERE ${a}= ${id}`, (err) => {
@@ -604,6 +739,6 @@ app.delete("/api/del", jwtValidate, (req, res) => {
   }
 });
 
-app.listen(enva.PORT, function () {
-  console.log(`Server Listen on port ${enva.PORT}`);
+app.listen(5000, function () {
+  console.log(`Server Listen on port 5000`);
 });
