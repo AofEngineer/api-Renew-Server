@@ -8,11 +8,15 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
 const enva = process.env;
+const port = enva.PORT;
 const mysql = require("mysql2");
 const bcrypt = require("bcryptjs");
 const salt = bcrypt.genSaltSync(10);
 const fs = require("fs");
 const path = require("path");
+const _ = require("lodash");
+const nodemailer = require("nodemailer");
+const request = require("request");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -739,6 +743,120 @@ app.delete("/api/del", jwtValidate, (req, res) => {
   }
 });
 
-app.listen(5000, function () {
-  console.log(`Server Listen on port 5000`);
+app.post("/webhook", (req, res) => {
+  const lineevent = req.body.events[0];
+  if (lineevent === undefined) return res.sendStatus(200);
+  console.log(lineevent);
+  reply(lineevent);
+  res.sendStatus(200);
+});
+
+const mailer = (mail) => {
+  var config = {
+    host: "smtp.gmail.com",
+    port: 587,
+    auth: {
+      user: "noreply.renewlabour@gmail.com",
+      pass: "lylv shsf zntp zkco",
+    },
+  };
+  var transporter = nodemailer.createTransport(config);
+  var defaultMail = {
+    from: "no-reply <noreply@renewlabour.com>",
+  };
+  // use default setting
+  mail = _.merge({}, defaultMail, mail);
+  console.log(mail);
+
+  // send email
+  transporter.sendMail(mail, function (error, info) {
+    if (error) return console.log(error);
+    console.log("mail sent:", info.response);
+  });
+};
+app.post("/activatecode", (req, res) => {
+  const { username, email } = req.body;
+  console.log(req.body);
+  const max = 9;
+  let randomnumber = "";
+  for (let x = 0; x < 6; x++) {
+    randomnumber += Math.floor(Math.random() * max);
+  }
+  console.log(username);
+  const sql = `UPDATE members SET activation_code = ${randomnumber} WHERE username = "${username}"`;
+  console.log(sql);
+  connection.query(sql, (err, results, fields) => {
+    if (err) return res.status(500).json({ message: err });
+    mailer({
+      to: email,
+      subject: "Activation Code",
+      text: `Code: ${randomnumber}`,
+    });
+    res.status(200).json({ status: "ok", message: "Email has been sent" });
+  });
+});
+app.post("/activated", (req, res) => {
+  const { username, code } = req.body;
+  const sql = `SELECT email,activation_code FROM members WHERE username = "${username}"`;
+  connection.query(sql, (err, result) => {
+    if (err) return res.status(500).json({ message: err });
+    const { activation_code, email } = result[0];
+    if (activation_code === code) {
+      res.status(200).json({
+        email,
+        message: "ยืนยันอีเมล์ สำเร็จ",
+      });
+    } else {
+      res.status(400).json({ message: "Code Invalid" });
+    }
+  });
+});
+app.post("/webhook", (req, res) => {
+  const lineevent = req.body.events[0];
+  if (lineevent === undefined) return res.sendStatus(200);
+  console.log(lineevent);
+  reply(lineevent);
+  res.sendStatus(200);
+});
+
+const reply = (e) => {
+  let headers = {
+    "Content-Type": "application/json",
+    Authorization:
+      "Bearer O/lEacPcXVsvQwN6JpsAFp72N4dNdSzeF9PqGhRZxILm2iYVo07PtAkOpBdmtH+5og/K1sU6XhlUQuPVmWDbyCXhxw4RfL2h77yuXxHiBEHRk+p9TGvV+qsDj59Vc3ZGtNAJPRuz5iNca2BX/Ugu4wdB04t89/1O/w1cDnyilFU=",
+  };
+  let body = JSON.stringify({
+    replyToken: e.replyToken,
+    messages: [
+      {
+        type: "text",
+        text: `userId: ${e.source.userId}`,
+      },
+      {
+        type: "text",
+        text: "How are you?",
+      },
+    ],
+  });
+  console.log({ headers, body });
+  if (e.message.text === "ลงทะเบียน") {
+    post(headers, body);
+  }
+};
+
+const post = (headers, body) => {
+  request.post(
+    {
+      url: "https://api.line.me/v2/bot/message/reply",
+      headers: headers,
+      body: body,
+    },
+    (err, res, body) => {
+      console.log("status = " + res.statusCode);
+    }
+  );
+};
+
+app.listen(port, function () {
+  console.log(`Server Listen on port ${port}`);
 });
