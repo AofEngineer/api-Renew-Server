@@ -17,6 +17,7 @@ const path = require("path");
 const _ = require("lodash");
 const nodemailer = require("nodemailer");
 const request = require("request");
+const data = require("./temp.json");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -187,16 +188,16 @@ const Addcompany = (req, res, next) => {
   });
 };
 
-app.post("/test", currentFile, file, (req, res, next) => {
-  res.json({
-    status: req.successful,
-    path: req.pathname,
-    pathdir: req.dirname,
-  });
-});
-app.post("/testdel", currentFile, deletefile, (req, res, next) => {
-  res.json(req.successful);
-});
+// app.post("/test", currentFile, file, (req, res, next) => {
+//   res.json({
+//     status: req.successful,
+//     path: req.pathname,
+//     pathdir: req.dirname,
+//   });
+// });
+// app.post("/testdel", currentFile, deletefile, (req, res, next) => {
+//   res.json(req.successful);
+// });
 
 app.post("/company", currentFile, file, (req, res, next) => {
   if (req.pathcom !== undefined || req.noc >= 0) {
@@ -775,7 +776,7 @@ const mailer = (mail) => {
   });
 };
 app.post("/activatecode", (req, res) => {
-  const { username, email } = req.body;
+  const { username, mail } = req.body;
   console.log(req.body);
   const max = 9;
   let randomnumber = "";
@@ -788,7 +789,7 @@ app.post("/activatecode", (req, res) => {
   connection.query(sql, (err, results, fields) => {
     if (err) return res.status(500).json({ message: err });
     mailer({
-      to: email,
+      to: mail,
       subject: "Activation Code",
       text: `Code: ${randomnumber}`,
     });
@@ -796,25 +797,35 @@ app.post("/activatecode", (req, res) => {
   });
 });
 app.post("/activated", (req, res) => {
-  const { username, code } = req.body;
-  const sql = `SELECT email,activation_code FROM members WHERE username = "${username}"`;
+  const { username, code, email } = req.body;
+  const sql = `SELECT activation_code FROM members WHERE username = "${username}"`;
   connection.query(sql, (err, result) => {
     if (err) return res.status(500).json({ message: err });
-    const { activation_code, email } = result[0];
+    console.log(result);
+    if (result === "" || !result || result === undefined)
+      return res.status(400).json({ message: "Code Invalid" });
+
+    const { activation_code } = result[0];
     if (activation_code === code) {
-      res.status(200).json({
-        email,
-        message: "ยืนยันอีเมล์ สำเร็จ",
+      const sql = `UPDATE members SET email = "${email}" WHERE username = "${username}"`;
+      connection.query(sql, (err, result) => {
+        if (err) return res.status(500).json({ message: err });
+        res.status(200).json({
+          status: "ok",
+          email,
+          message: "ยืนยันอีเมล์ สำเร็จ",
+        });
       });
     } else {
       res.status(400).json({ message: "Code Invalid" });
     }
   });
 });
+
 app.post("/webhook", (req, res) => {
   const lineevent = req.body.events[0];
   if (lineevent === undefined) return res.sendStatus(200);
-  console.log(lineevent);
+  console.log(req.body.events);
   reply(lineevent);
   res.sendStatus(200);
 });
@@ -823,24 +834,42 @@ const reply = (e) => {
   let headers = {
     "Content-Type": "application/json",
     Authorization:
-      "Bearer O/lEacPcXVsvQwN6JpsAFp72N4dNdSzeF9PqGhRZxILm2iYVo07PtAkOpBdmtH+5og/K1sU6XhlUQuPVmWDbyCXhxw4RfL2h77yuXxHiBEHRk+p9TGvV+qsDj59Vc3ZGtNAJPRuz5iNca2BX/Ugu4wdB04t89/1O/w1cDnyilFU=",
+      "Bearer fg8kVZiNrpY5xsP3llJ0dU2qCPQEVDGpeK9W7hnO3V4W2KjeZf/L8u+FIkIUEr8fB6dH6jzeHR1gM4fKLhlAZ4pytK8z9quOjNKM07TMq4diYuf/FtxZoqCfUHHo60WCgoh9HTNmsI51z6ORo/eOKQdB04t89/1O/w1cDnyilFU=",
   };
   let body = JSON.stringify({
     replyToken: e.replyToken,
     messages: [
       {
         type: "text",
-        text: `userId: ${e.source.userId}`,
+        text: `ขั้นตอนลงทะเบียน`,
       },
       {
         type: "text",
-        text: "How are you?",
+        text: "1. พิมพ์ชือบริษัท ตัวอย่าง '1-Renewlabour Co.,Ltd'",
+      },
+      {
+        type: "text",
+        text: "2. พิมพ์ email ที่ลงทะเบียนแล้ว ตัวอย่าง '2-example@renewlabour.com'",
       },
     ],
   });
   console.log({ headers, body });
+  let temp;
   if (e.message.text === "ลงทะเบียน") {
-    post(headers, body);
+    const newDatestart = Date.now();
+    const newDateend = new Date(e.timestamp);
+    let diff = newDateend - newDatestart;
+    let dayLeft = Math.floor((newDateend % (1000 * 60 * 60)) / (1000 * 60));
+    if (dayLeft === null || dayLeft === undefined || isNaN(dayLeft)) {
+      console.log((dayLeft = "ไม่มี"));
+    } else {
+      temp = dayLeft;
+      console.log("temp" + temp);
+    }
+    // post(headers, body);
+  }
+  if (e.message.text !== "ลงทะเบียน") {
+    console.log("temp2" + temp);
   }
 };
 

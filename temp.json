@@ -1,0 +1,20 @@
+{
+    "type": "message",
+    "message": {
+        "type": "text",
+        "id": "477941628783296946",
+        "quoteToken": "YPEea0K5Tq6aPYmyLSADmBI_pI05pRgUpGu8xxhsWNESyl8ZtzGz0lKMx-AgEMoDE2LkGzEypcqvNGuNQYtO-c5zUx5Cs6EiBvJGGG43JCD3zCmNL5cbDkO-YNYl855RFBt_dR2_fREYg0e9m_neUA",
+        "text": "ลงทะเบียน"
+    },
+    "webhookEventId": "01HD3K998WZF20E2YF77V1GXNA",
+    "deliveryContext": {
+        "isRedelivery": false
+    },
+    "timestamp": 1697706714106,
+    "source": {
+        "type": "user",
+        "userId": "U975c245c59d19497370d342fb364cf58"
+    },
+    "replyToken": "8329e4d3194d44d7a7d29ed954dabb66",
+    "mode": "active"
+}
