@@ -35,14 +35,15 @@ const connection = mysql.createPool({
 });
 
 const currentFile = (req, res, next) => {
-  const company = req.body.cpn_n;
+  const body = req.body;
+  const company = body.member_group.toString();
   const per =
-    req.body.person !== undefined
-      ? `${req.body.person.outlanderNo}-${req.body.person.firstname}`
+    body.person !== undefined
+      ? `${body.person.outlanderNo}-${body.person.firstname}`
       : "";
   const mem =
-    req.body.members !== undefined
-      ? `${req.body.members.member_name}-${req.body.members.member_lastname}`
+    body.members !== undefined
+      ? `${body.members.member_name}-${body.members.member_lastname}`
       : "";
   let arc = [],
     arm = [],
@@ -75,14 +76,21 @@ const currentFile = (req, res, next) => {
     res.status(403).json({ message: err });
   }
 };
+const fils = () => {
+  const m = 1;
+  fs.mkdirSync(path.join(`./files`, m.toString()));
+};
 const file = (req, res, next) => {
-  const company = req.body.cpn_n !== undefined ? req.body.cpn_n : "";
+  const body = req.body;
+  const company =
+    body.member_group !== undefined ? body.member_group.toString() : "";
+  console.log(company);
   const per =
-    req.body.person !== undefined
-      ? `${req.body.person.outlanderNo}-${req.body.person.firstname}`
+    body.person !== undefined
+      ? `${body.person.outlanderNo}-${body.person.firstname}`
       : "";
   const mem =
-    req.body.members !== undefined
+    body.members !== undefined
       ? `${req.body.members.member_name}-${req.body.members.member_lastname}`
       : "";
   try {
@@ -171,8 +179,7 @@ const Addcompany = (req, res, next) => {
               status: "ok",
               companyNo: results.insertId,
               companyName: cpn_n,
-              message:
-                "Insert ID: " + c_iden + " Name: " + cpn_n + " Successful",
+              message: `บริษัท: ${cpn_n} เพิ่มสำเร็จแล้ว`,
             });
           });
         } else {
@@ -188,16 +195,16 @@ const Addcompany = (req, res, next) => {
   });
 };
 
-// app.post("/test", currentFile, file, (req, res, next) => {
-//   res.json({
-//     status: req.successful,
-//     path: req.pathname,
-//     pathdir: req.dirname,
-//   });
-// });
-// app.post("/testdel", currentFile, deletefile, (req, res, next) => {
-//   res.json(req.successful);
-// });
+app.post("/test", fils, (req, res, next) => {
+  // res.json({
+  //   status: req.successful,
+  //   path: req.pathname,
+  //   pathdir: req.dirname,
+  // });
+});
+app.post("/testdel", currentFile, deletefile, (req, res, next) => {
+  res.json(req.successful);
+});
 
 app.post("/company", currentFile, file, (req, res, next) => {
   if (req.pathcom !== undefined || req.noc >= 0) {
@@ -368,7 +375,7 @@ app.get("/download/:filename", (req, res) => {
 ///////////////////////// upload file  /////////////////////////
 app.post("/api/upload", currentFile, (req, res, next) => {
   const uploadFile = req.files.file;
-  const cpn = req.body.cpn_n;
+  const cpn = req.body.member_group.toString();
   const per = req.body.person ? req.body.person : "";
   const mem = req.body.members ? req.body.members : "";
   const reqname = req.body.firstname;
@@ -383,9 +390,17 @@ app.post("/api/upload", currentFile, (req, res, next) => {
           filename: reqname,
         });
       });
-    }
-    if (mem !== "" && mem !== undefined) {
+    } else if (mem !== "" && mem !== undefined) {
       uploadFile.mv(`./files/${cpn}/members/${mem}/${reqname}${ext}`, (err) => {
+        if (err) return res.status(500).json({ message: err });
+        res.status(200).json({
+          status: "ok",
+          message: `Has been upload ${reqname}`,
+          filename: reqname,
+        });
+      });
+    } else if (cpn !== "" && cpn !== undefined) {
+      uploadFile.mv(`./files/${cpn}/${reqname}${ext}`, (err) => {
         if (err) return res.status(500).json({ message: err });
         res.status(200).json({
           status: "ok",
@@ -474,11 +489,7 @@ app.post("/api/plususers", jwtValidate, currentFile, file, (req, res, next) => {
     let text = "";
     for (const x in postparam) {
       if (x === "person_id" || x === "member_group" || x === "company_id") {
-        if (x === "member_group") {
-          text += `10,`;
-        } else {
-          text += `${postparam[x]},`;
-        }
+        text += `${postparam[x]},`;
       } else {
         text += `'${postparam[x]}',`;
       }
