@@ -17,7 +17,7 @@ const path = require("path");
 const _ = require("lodash");
 const nodemailer = require("nodemailer");
 const request = require("request");
-const data = require("./temp.json");
+// const data = require("./temp.json");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -56,11 +56,13 @@ const currentFile = (req, res, next) => {
     const c = arc.filter((e) => e === company).length;
     if (c !== undefined) req.noc = c;
     if (c > 0) {
+      req.pathcom = `./files/${company}`;
       if (mem !== undefined || mem !== "") {
         fs.readdirSync(`./files/${company}/members`).forEach((file) => {
           arm.push(file);
         });
         const m = arm.filter((e) => e === mem).length;
+        if (m > 0) req.pathmem = `./files/${company}/${mem}`;
         if (m !== undefined) req.nom = m;
       }
       if (per !== undefined || per !== "") {
@@ -68,6 +70,7 @@ const currentFile = (req, res, next) => {
           arp.push(file);
         });
         const p = arp.filter((e) => e === per).length;
+        if (p > 0) req.pathper = `./files/${company}/${per}`;
         if (p !== undefined) req.nop = p;
       }
     }
@@ -84,7 +87,6 @@ const file = (req, res, next) => {
   const body = req.body;
   const company =
     body.member_group !== undefined ? body.member_group.toString() : "";
-  console.log(company);
   const per =
     body.person !== undefined
       ? `${body.person.outlanderNo}-${body.person.firstname}`
@@ -99,14 +101,17 @@ const file = (req, res, next) => {
       fs.mkdirSync(path.join(`./files/${company}`, "members"));
       fs.mkdirSync(path.join(`./files/${company}`, "persons"));
       req.pathcom = `./files/${company}`;
+      req.noc = 1;
     }
     if (req.nom <= 0 && mem !== "") {
       fs.mkdirSync(path.join(`./files/${company}/members`, mem));
       req.pathmem = `./files/${company}/${mem}`;
+      req.nom = 1;
     }
     if (req.nop <= 0 && per !== "") {
       fs.mkdirSync(path.join(`./files/${company}/persons`, per));
       req.pathper = `./files/${company}/${per}`;
+      req.nop = 1;
     }
     next();
   } catch (err) {
@@ -333,6 +338,7 @@ app.post("/login", (req, res) => {
           company: data.member_company,
           email: data.email,
           tel: data.tel,
+          picpath: data.m_picpath,
           companyNo: data.company_id,
           companyName: data.cpn_n,
           group: data.member_group,
@@ -373,7 +379,7 @@ app.get("/download/:filename", (req, res) => {
 });
 
 ///////////////////////// upload file  /////////////////////////
-app.post("/api/upload", currentFile, (req, res, next) => {
+app.post("/api/upload", currentFile, file, (req, res, next) => {
   const uploadFile = req.files.file;
   const cpn = req.body.member_group.toString();
   const per = req.body.person ? req.body.person : "";
@@ -381,36 +387,36 @@ app.post("/api/upload", currentFile, (req, res, next) => {
   const reqname = req.body.firstname;
   const ext = path.extname(uploadFile.name);
   try {
-    if (per !== "" && per !== undefined) {
+    if (per !== "" && per !== undefined && req.nop > 0) {
       uploadFile.mv(`./files/${cpn}/persons/${per}/${reqname}${ext}`, (err) => {
         if (err) return res.status(500).json({ message: err });
         res.status(200).json({
           status: "ok",
-          message: `Has been upload ${reqname}`,
+          message: `File: ${reqname} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
-    } else if (mem !== "" && mem !== undefined) {
+    } else if (mem !== "" && mem !== undefined && req.nom > 0) {
       uploadFile.mv(`./files/${cpn}/members/${mem}/${reqname}${ext}`, (err) => {
         if (err) return res.status(500).json({ message: err });
         res.status(200).json({
           status: "ok",
-          message: `Has been upload ${reqname}`,
+          message: `File: ${reqname} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
-    } else if (cpn !== "" && cpn !== undefined) {
+    } else if (cpn !== "" && cpn !== undefined && req.noc > 0) {
       uploadFile.mv(`./files/${cpn}/${reqname}${ext}`, (err) => {
         if (err) return res.status(500).json({ message: err });
         res.status(200).json({
           status: "ok",
-          message: `Has been upload ${reqname}`,
+          message: `File: ${reqname} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
     }
   } catch (err) {
-    res.status(500).json({ message: err });
+    res.status(500).json({ message: `File: ${reqname} อัพโหลดไม่สำเร็จ` });
   }
 });
 ///////////////////////// upload file  /////////////////////////
@@ -498,16 +504,17 @@ app.post("/api/plususers", jwtValidate, currentFile, file, (req, res, next) => {
     const sql = `INSERT INTO persons(${Object.keys(
       postparam
     )})VALUES (${text}) `;
+    // console.log(sql);
     if (req.pathper !== undefined || req.pathper !== "") {
       connection.query(sql, (err, results, fields) => {
         if (err) {
           return res
             .status(500)
-            .json({ status: "Error", message: "Input Valid", msg: err });
+            .json({ status: "Error", message: "Input Valid" });
         }
         res.status(200).json({
           status: "ok",
-          message: `Insert ID: ${outlanderNo} Name: ${postparam.firstnameth} Successful`,
+          message: `เพิ่มแรงงาน: ${postparam.firstnameth} สำเร็จ`,
         });
       });
     } else {
@@ -794,9 +801,7 @@ app.post("/activatecode", (req, res) => {
   for (let x = 0; x < 6; x++) {
     randomnumber += Math.floor(Math.random() * max);
   }
-  console.log(username);
   const sql = `UPDATE members SET activation_code = ${randomnumber} WHERE username = "${username}"`;
-  console.log(sql);
   connection.query(sql, (err, results, fields) => {
     if (err) return res.status(500).json({ message: err });
     mailer({
@@ -812,7 +817,6 @@ app.post("/activated", (req, res) => {
   const sql = `SELECT activation_code FROM members WHERE username = "${username}"`;
   connection.query(sql, (err, result) => {
     if (err) return res.status(500).json({ message: err });
-    console.log(result);
     if (result === "" || !result || result === undefined)
       return res.status(400).json({ message: "Code Invalid" });
 
