@@ -17,6 +17,8 @@ const path = require("path");
 const _ = require("lodash");
 const nodemailer = require("nodemailer");
 const request = require("request");
+const cron = require("node-cron");
+
 // const data = require("./temp.json");
 
 app.use(bodyParser.json());
@@ -36,14 +38,19 @@ const connection = mysql.createPool({
 
 const currentFile = (req, res, next) => {
   const body = req.body;
+
   const company = body.member_group.toString();
   const per =
     body.person !== undefined
-      ? `${body.person.outlanderNo}-${body.person.firstname}`
+      ? body.person.outlanderNo !== undefined
+        ? `${body.person.outlanderNo}-${body.person.firstname}`
+        : body.person
       : "";
   const mem =
     body.members !== undefined
-      ? `${body.members.member_name}-${body.members.member_lastname}`
+      ? body.members.member_name !== undefined
+        ? `${body.members.member_name}-${body.members.member_lastname}`
+        : body.members
       : "";
   let arc = [],
     arm = [],
@@ -83,33 +90,35 @@ const fils = () => {
   const m = 1;
   fs.mkdirSync(path.join(`./files`, m.toString()));
 };
-const file = (req, res, next) => {
+const file = async (req, res, next) => {
   const body = req.body;
   const company =
     body.member_group !== undefined ? body.member_group.toString() : "";
   const per =
     body.person !== undefined
-      ? `${body.person.outlanderNo}-${body.person.firstname}`
+      ? body.person.outlanderNo !== undefined
+        ? `${body.person.outlanderNo}-${body.person.firstname}`
+        : body.person
       : "";
   const mem =
     body.members !== undefined
-      ? `${req.body.members.member_name}-${req.body.members.member_lastname}`
+      ? body.members.member_name !== undefined
+        ? `${body.members.member_name}-${body.members.member_lastname}`
+        : body.members
       : "";
   try {
     if (req.noc <= 0 && company !== "") {
-      fs.mkdirSync(path.join(`./files`, company));
-      fs.mkdirSync(path.join(`./files/${company}`, "members"));
-      fs.mkdirSync(path.join(`./files/${company}`, "persons"));
+      await fs.mkdirSync(path.join(`./files`, company));
+      await fs.mkdirSync(path.join(`./files/${company}`, "members"));
+      await fs.mkdirSync(path.join(`./files/${company}`, "persons"));
       req.pathcom = `./files/${company}`;
       req.noc = 1;
-    }
-    if (req.nom <= 0 && mem !== "") {
-      fs.mkdirSync(path.join(`./files/${company}/members`, mem));
+    } else if (req.nom <= 0 && mem !== "") {
+      await fs.mkdirSync(path.join(`./files/${company}/members`, mem));
       req.pathmem = `./files/${company}/${mem}`;
       req.nom = 1;
-    }
-    if (req.nop <= 0 && per !== "") {
-      fs.mkdirSync(path.join(`./files/${company}/persons`, per));
+    } else if (req.nop <= 0 && per !== "") {
+      await fs.mkdirSync(path.join(`./files/${company}/persons`, per));
       req.pathper = `./files/${company}/${per}`;
       req.nop = 1;
     }
@@ -380,43 +389,50 @@ app.get("/download/:filename", (req, res) => {
 
 ///////////////////////// upload file  /////////////////////////
 app.post("/api/upload", currentFile, file, (req, res, next) => {
+  const body = req.body;
   const uploadFile = req.files.file;
-  const cpn = req.body.member_group.toString();
-  const per = req.body.person ? req.body.person : "";
-  const mem = req.body.members ? req.body.members : "";
-  const reqname = req.body.firstname;
+  const cpn = body.member_group.toString();
+  const per = body.person !== undefined ? body.person : "";
+  const mem = body.members ? body.members : "";
+  const reqname = body.firstname;
   const ext = path.extname(uploadFile.name);
   try {
     if (per !== "" && per !== undefined && req.nop > 0) {
-      uploadFile.mv(`./files/${cpn}/persons/${per}/${reqname}${ext}`, (err) => {
-        if (err) return res.status(500).json({ message: err });
+      const path = `./files/${cpn}/persons/${per}/${reqname}${ext}`;
+      uploadFile.mv(path, (err) => {
+        if (err) return res.status(500).json({ message: `1: ${err}` });
         res.status(200).json({
           status: "ok",
-          message: `File: ${reqname} อัพโหลดสำเร็จ`,
+          message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
     } else if (mem !== "" && mem !== undefined && req.nom > 0) {
-      uploadFile.mv(`./files/${cpn}/members/${mem}/${reqname}${ext}`, (err) => {
-        if (err) return res.status(500).json({ message: err });
+      const path = `./files/${cpn}/members/${mem}/${reqname}${ext}`;
+      console.log(path);
+      uploadFile.mv(path, (err) => {
+        if (err) return res.status(500).json({ message: `2: ${err}` });
         res.status(200).json({
           status: "ok",
-          message: `File: ${reqname} อัพโหลดสำเร็จ`,
+          message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
     } else if (cpn !== "" && cpn !== undefined && req.noc > 0) {
-      uploadFile.mv(`./files/${cpn}/${reqname}${ext}`, (err) => {
-        if (err) return res.status(500).json({ message: err });
+      const path = `./files/${cpn}/${reqname}${ext}`;
+      uploadFile.mv(path, (err) => {
+        if (err) return res.status(500).json({ message: `3: ${err}` });
         res.status(200).json({
           status: "ok",
-          message: `File: ${reqname} อัพโหลดสำเร็จ`,
+          message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
     }
   } catch (err) {
-    res.status(500).json({ message: `File: ${reqname} อัพโหลดไม่สำเร็จ` });
+    res
+      .status(500)
+      .json({ message: `File: ${reqname}${ext} อัพโหลดไม่สำเร็จ` });
   }
 });
 ///////////////////////// upload file  /////////////////////////
@@ -887,7 +903,45 @@ const reply = (e) => {
     console.log("temp2" + temp);
   }
 };
+// cron.schedule("* * * * *", () => {
+//   postschedule();
+//   console.log("running a task every minute");
+// });
+const postschedule = () => {
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization:
+      "Bearer fg8kVZiNrpY5xsP3llJ0dU2qCPQEVDGpeK9W7hnO3V4W2KjeZf/L8u+FIkIUEr8fB6dH6jzeHR1gM4fKLhlAZ4pytK8z9quOjNKM07TMq4diYuf/FtxZoqCfUHHo60WCgoh9HTNmsI51z6ORo/eOKQdB04t89/1O/w1cDnyilFU=",
+  };
 
+  const body = JSON.stringify({
+    to: "U91f085974113fbb9a49ebb5ea6cf73f8",
+    messages: [
+      {
+        type: "text",
+        text: `ไม่ต้องตกใจ`,
+      },
+      {
+        type: "text",
+        text: "ทดสอบระบบตั้งเวลาส่งข้อความ",
+      },
+      {
+        type: "text",
+        text: "จำนวนแรงงานที่มีอยู่ตอนนนี้ 10 คน\nwarning 1 คน\nurgent 2 คน\nexpire 2 คน",
+      },
+    ],
+  });
+  request.post(
+    {
+      url: "https://api.line.me/v2/bot/message/push",
+      headers: headers,
+      body: body,
+    },
+    (err, res, body) => {
+      console.log("status = " + res.statusCode);
+    }
+  );
+};
 const post = (headers, body) => {
   request.post(
     {
