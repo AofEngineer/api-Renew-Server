@@ -43,7 +43,7 @@ const currentFile = (req, res, next) => {
   const per =
     body.person !== undefined
       ? body.person.outlanderNo !== undefined
-        ? `${body.person.outlanderNo}-${body.person.firstname}`
+        ? body.person.outlanderNo
         : body.person
       : "";
   const mem =
@@ -97,7 +97,7 @@ const file = async (req, res, next) => {
   const per =
     body.person !== undefined
       ? body.person.outlanderNo !== undefined
-        ? `${body.person.outlanderNo}-${body.person.firstname}`
+        ? body.person.outlanderNo
         : body.person
       : "";
   const mem =
@@ -460,7 +460,7 @@ app.post("/api/members", jwtValidate, (req, res) => {
   const group = req.body.member_group
     ? `WHERE member_group = ${req.body.member_group} and m_admin = 0`
     : ``;
-  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read FROM members  ${group}`;
+  const sql = `SELECT mem_id, username , member_name, member_lastname, email, tel, m_add, m_del, m_edit, m_read,m_picpath FROM members  ${group}`;
   connection.query(sql, (err, results, fields) => {
     if (err) {
       return res
@@ -701,7 +701,14 @@ app.put("/api/emembers", (req, res) => {
     }
   }
   text = text.slice(0, -1);
-  const sql = `UPDATE members SET ${text} WHERE mem_id = ${mem_id}`;
+  let str;
+  if (mem_id !== undefined) {
+    str = `mem_id = ${mem_id}`;
+  } else {
+    str = `username = "${username}"`;
+  }
+  const sql = `UPDATE members SET ${text} WHERE ${str}`;
+  console.log(sql);
   const checkid = `SELECT * FROM members WHERE username = '${username}'`;
   connection.query(checkid, (err, results, fields) => {
     if (err)
