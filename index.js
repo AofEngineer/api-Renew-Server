@@ -208,7 +208,7 @@ const Addcompany = (req, res, next) => {
     }
   });
 };
-
+app.get("/files/:path", (req, res, next) => {});
 app.post("/test", fils, (req, res, next) => {
   // res.json({
   //   status: req.successful,
@@ -963,5 +963,5 @@ const post = (headers, body) => {
 };
 
 app.listen(port, function () {
-  console.log(`Server Listen on port ${port}`);
+  console.log(`Server Listen on port ${__dirname} : ${port}`);
 });

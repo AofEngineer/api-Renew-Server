@@ -2,4 +2,6 @@
 /node_modules
 /files
 /index copy.js
+# misc
 .vscode
+/.vscode
