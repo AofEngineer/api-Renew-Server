@@ -208,7 +208,7 @@ const Addcompany = (req, res, next) => {
     }
   });
 };
-app.get("/files/:path", (req, res, next) => {});
+
 app.post("/test", fils, (req, res, next) => {
   // res.json({
   //   status: req.successful,
@@ -367,7 +367,21 @@ app.post("/auth", jwtRefreshTokenValidate, (req, res) => {
     accesstoken: access_token,
   });
 });
-
+app.get("/files/:filepath", (req, res, next) => {
+  const param = req.params;
+  const { filepath } = param;
+  let array = [];
+  let text = "";
+  console.log(filepath);
+  array = filepath.split("_");
+  console.log(array);
+  for (const x in array) {
+    text += `/${array[x]}`;
+  }
+  const filePath = `./files${text}`;
+  console.log(filePath);
+  fs.readFileSync(filePath);
+});
 app.get("/download/:filename", (req, res) => {
   const param = req.params;
   const { filename } = param;
@@ -397,31 +411,51 @@ app.post("/api/upload", currentFile, file, (req, res, next) => {
   const reqname = body.firstname;
   const ext = path.extname(uploadFile.name);
   try {
-    if (per !== "" && per !== undefined && req.nop > 0) {
+    if (per !== "" && per !== undefined && req.nop > 0 && ext !== ".jpg") {
       const path = `./files/${cpn}/persons/${per}/${reqname}${ext}`;
       uploadFile.mv(path, (err) => {
-        if (err) return res.status(500).json({ message: `1: ${err}` });
+        if (err) return res.status(500).json({ message: `${err}` });
         res.status(200).json({
           status: "ok",
           message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
-    } else if (mem !== "" && mem !== undefined && req.nom > 0) {
+    } else if (
+      mem !== "" &&
+      mem !== undefined &&
+      req.nom > 0 &&
+      ext !== ".jpg"
+    ) {
       const path = `./files/${cpn}/members/${mem}/${reqname}${ext}`;
       console.log(path);
       uploadFile.mv(path, (err) => {
-        if (err) return res.status(500).json({ message: `2: ${err}` });
+        if (err) return res.status(500).json({ message: `${err}` });
         res.status(200).json({
           status: "ok",
           message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
           filename: reqname,
         });
       });
-    } else if (cpn !== "" && cpn !== undefined && req.noc > 0) {
+    } else if (
+      cpn !== "" &&
+      cpn !== undefined &&
+      req.noc > 0 &&
+      ext !== ".jpg"
+    ) {
       const path = `./files/${cpn}/${reqname}${ext}`;
       uploadFile.mv(path, (err) => {
-        if (err) return res.status(500).json({ message: `3: ${err}` });
+        if (err) return res.status(500).json({ message: `${err}` });
+        res.status(200).json({
+          status: "ok",
+          message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
+          filename: reqname,
+        });
+      });
+    } else if (ext === ".jpg") {
+      const path = `./files/${reqname}${ext}`;
+      uploadFile.mv(path, (err) => {
+        if (err) return res.status(500).json({ message: `${err}` });
         res.status(200).json({
           status: "ok",
           message: `File: ${reqname}${ext} อัพโหลดสำเร็จ`,
@@ -438,7 +472,7 @@ app.post("/api/upload", currentFile, file, (req, res, next) => {
 ///////////////////////// upload file  /////////////////////////
 ///////////////////////// GET /////////////////////////
 app.post("/api/users", jwtValidate, (req, res) => {
-  if (req.body.member_group) return res.status();
+  if (!req.body.member_group) return res.status();
   const group = req.body.member_group
     ? `WHERE p.member_group = ${req.body.member_group}`
     : ``;
@@ -788,7 +822,7 @@ app.delete("/api/del", jwtValidate, (req, res) => {
 app.post("/webhook", (req, res) => {
   const lineevent = req.body.events[0];
   if (lineevent === undefined) return res.sendStatus(200);
-  console.log(lineevent);
+  // console.log(lineevent);
   reply(lineevent);
   res.sendStatus(200);
 });
@@ -808,7 +842,7 @@ const mailer = (mail) => {
   };
   // use default setting
   mail = _.merge({}, defaultMail, mail);
-  console.log(mail);
+  // console.log(mail);
 
   // send email
   transporter.sendMail(mail, function (error, info) {
@@ -860,69 +894,215 @@ app.post("/activated", (req, res) => {
   });
 });
 
+let temp;
+let time;
+const cal = (e) => {
+  let t = "";
+  if (e === "" || e === undefined) return t;
+  const date = new Date(Date.now());
+  var start = Math.floor((e % (1000 * 60 * 60)) / (1000 * 60));
+  var end = Math.floor((date % (1000 * 60 * 60)) / (1000 * 60));
+  t = end - start;
+  return t;
+};
+app.get("/aap", (req, res) => {
+  const date = new Date(Date.now());
+  var start = Math.floor((temp % (1000 * 60 * 60)) / (1000 * 60));
+  var end = Math.floor((date % (1000 * 60 * 60)) / (1000 * 60));
+  const aa = end - start;
+  res.json(aa);
+});
 app.post("/webhook", (req, res) => {
   const lineevent = req.body.events[0];
   if (lineevent === undefined) return res.sendStatus(200);
-  console.log(req.body.events);
   reply(lineevent);
   res.sendStatus(200);
 });
 
-const reply = (e) => {
-  let headers = {
-    "Content-Type": "application/json",
-    Authorization:
-      "Bearer fg8kVZiNrpY5xsP3llJ0dU2qCPQEVDGpeK9W7hnO3V4W2KjeZf/L8u+FIkIUEr8fB6dH6jzeHR1gM4fKLhlAZ4pytK8z9quOjNKM07TMq4diYuf/FtxZoqCfUHHo60WCgoh9HTNmsI51z6ORo/eOKQdB04t89/1O/w1cDnyilFU=",
-  };
-  let body = JSON.stringify({
-    replyToken: e.replyToken,
-    messages: [
-      {
-        type: "text",
-        text: `ขั้นตอนลงทะเบียน`,
-      },
-      {
-        type: "text",
-        text: "1. พิมพ์ชือบริษัท ตัวอย่าง '1-Renewlabour Co.,Ltd'",
-      },
-      {
-        type: "text",
-        text: "2. พิมพ์ email ที่ลงทะเบียนแล้ว ตัวอย่าง '2-example@renewlabour.com'",
-      },
-    ],
-  });
-  console.log({ headers, body });
-  let temp;
-  if (e.message.text === "ลงทะเบียน") {
-    const newDatestart = Date.now();
-    const newDateend = new Date(e.timestamp);
-    let diff = newDateend - newDatestart;
-    let dayLeft = Math.floor((newDateend % (1000 * 60 * 60)) / (1000 * 60));
-    if (dayLeft === null || dayLeft === undefined || isNaN(dayLeft)) {
-      console.log((dayLeft = "ไม่มี"));
-    } else {
-      temp = dayLeft;
-      console.log("temp" + temp);
-    }
-    // post(headers, body);
-  }
-  if (e.message.text !== "ลงทะเบียน") {
-    console.log("temp2" + temp);
+const reply = async (e) => {
+  let body;
+  switch (e.message.text) {
+    case "ดูเว็บไซต์":
+      body = JSON.stringify({
+        replyToken: e.replyToken,
+        messages: [
+          {
+            type: "text",
+            text: `www.renewlabour.com`,
+          },
+        ],
+      });
+      post(body);
+      break;
+    case "ลงทะเบียน":
+      if (temp === undefined || temp === "" || cal(temp) >= 5) {
+        const t = cal(temp) >= 5 ? cal(temp) : cal(e.timestamp);
+        if (t < 5) {
+          temp = e.timestamp;
+          time = Date(Date.now());
+          body = JSON.stringify({
+            replyToken: e.replyToken,
+            messages: [
+              {
+                type: "text",
+                text: `ขั้นตอนลงทะเบียน`,
+              },
+              {
+                type: "text",
+                text: `1. พิมพ์ชือบริษัท ตัวอย่าง "1-Renewlabour Co.,Ltd"`,
+              },
+              {
+                type: "text",
+                text: `2. พิมพ์ email ที่ลงทะเบียนแล้ว ตัวอย่าง "2-example@renewlabour.com"`,
+              },
+            ],
+          });
+          post(body);
+        } else {
+          temp = undefined;
+          time = undefined;
+        }
+      }
+      break;
+    default:
+      if (cal(temp) >= 5 && temp !== undefined && temp !== "") {
+        temp = "";
+        time = "";
+        body = JSON.stringify({
+          replyToken: e.replyToken,
+          messages: [
+            {
+              type: "text",
+              text: `กรุณาลงทะเบียนใหม่อีกครั้ง`,
+            },
+            {
+              type: "text",
+              text: `ขอบคุณครับ`,
+            },
+          ],
+        });
+        post(body);
+      } else if (cal(temp) <= 5 && temp !== undefined && temp !== "") {
+        const mail = e.message.text;
+        const sql = `SELECT email FROM members WHERE email = '${mail}'`;
+        try {
+          connection.query(sql, (err, result) => {
+            if (result[0] !== undefined) {
+              const update = `UPDATE members SET lineID='${e.source.userId}' WHERE email = '${mail}'`;
+              connection.query(update, (err, result) => {
+                temp = "";
+                time = "";
+                body = JSON.stringify({
+                  replyToken: e.replyToken,
+                  messages: [
+                    {
+                      type: "text",
+                      text: `ลงทะเบียนเรียบร้อย`,
+                    },
+                    {
+                      type: "text",
+                      text: `ยินดีต้อนรับสู่ครอบครัว\nRenewlabour\nคุณจะได้รับการแจ้งเตือนการต่ออายุเอกสาร\nทุกวัน จ - ศ เวลา 08.00 น.`,
+                    },
+                    {
+                      type: "text",
+                      text: `ขอบคุณครับ`,
+                    },
+                  ],
+                });
+                post(body);
+              });
+            } else {
+              temp = "";
+              time = "";
+              body = JSON.stringify({
+                replyToken: e.replyToken,
+                messages: [
+                  {
+                    type: "text",
+                    text: `อีเมล "${e.message.text}" ไม่มีในระบบ`,
+                  },
+                  {
+                    type: "text",
+                    text: `กรุณาลงทะเบียนใหม่อีกครั้ง`,
+                  },
+                  {
+                    type: "text",
+                    text: `ขอบคุณครับ`,
+                  },
+                ],
+              });
+              post(body);
+            }
+          });
+        } catch (err) {
+          temp = "";
+          time = "";
+          body = JSON.stringify({
+            replyToken: e.replyToken,
+            messages: [
+              {
+                type: "text",
+                text: `กรุณาลงทะเบียนใหม่อีกครั้ง`,
+              },
+              {
+                type: "text",
+                text: `ขอบคุณครับ`,
+              },
+            ],
+          });
+          post(body);
+        }
+      } else if (time === undefined || time === "" || cal(time) >= 30) {
+        const t = cal(time) >= 30 ? cal(time) : cal(e.timestamp);
+        if (t < 30) {
+          time = e.timestamp;
+          getProfile(e.source.userId, (call) => {
+            const profile = JSON.parse(call);
+            body = JSON.stringify({
+              replyToken: e.replyToken,
+              messages: [
+                {
+                  type: "text",
+                  text: `สวัสดีครับ คุณ ${profile.displayName}`,
+                },
+                {
+                  type: "text",
+                  text: `มีอะไรให้ช่วยไหมครับ`,
+                },
+                {
+                  type: "text",
+                  text: `เมนูด้านล่างช่วยเหลือคุณได้ครับ`,
+                },
+              ],
+            });
+            post(body);
+          });
+        } else {
+          time = "";
+        }
+      }
+      break;
   }
 };
-// cron.schedule("* * * * *", () => {
-//   postschedule();
-//   console.log("running a task every minute");
-// });
-const postschedule = () => {
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization:
-      "Bearer fg8kVZiNrpY5xsP3llJ0dU2qCPQEVDGpeK9W7hnO3V4W2KjeZf/L8u+FIkIUEr8fB6dH6jzeHR1gM4fKLhlAZ4pytK8z9quOjNKM07TMq4diYuf/FtxZoqCfUHHo60WCgoh9HTNmsI51z6ORo/eOKQdB04t89/1O/w1cDnyilFU=",
-  };
+const headersLine = {
+  "Content-Type": "application/json",
+  Authorization:
+    "Bearer O/lEacPcXVsvQwN6JpsAFp72N4dNdSzeF9PqGhRZxILm2iYVo07PtAkOpBdmtH+5og/K1sU6XhlUQuPVmWDbyCXhxw4RfL2h77yuXxHiBEHRk+p9TGvV+qsDj59Vc3ZGtNAJPRuz5iNca2BX/Ugu4wdB04t89/1O/w1cDnyilFU=",
+};
 
+cron.schedule(
+  "* * 8 * 0-5",
+  () => {
+    postschedule();
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Bangkok",
+  }
+);
+const postschedule = () => {
   const body = JSON.stringify({
-    to: "U91f085974113fbb9a49ebb5ea6cf73f8",
+    to: "U975c245c59d19497370d342fb364cf58",
     messages: [
       {
         type: "text",
@@ -941,7 +1121,7 @@ const postschedule = () => {
   request.post(
     {
       url: "https://api.line.me/v2/bot/message/push",
-      headers: headers,
+      headers: headersLine,
       body: body,
     },
     (err, res, body) => {
@@ -949,17 +1129,27 @@ const postschedule = () => {
     }
   );
 };
-const post = (headers, body) => {
+const post = (body) => {
   request.post(
     {
       url: "https://api.line.me/v2/bot/message/reply",
-      headers: headers,
+      headers: headersLine,
       body: body,
     },
     (err, res, body) => {
       console.log("status = " + res.statusCode);
     }
   );
+};
+
+const getProfile = (e, callback) => {
+  const set = {
+    url: `https://api.line.me/v2/bot/profile/${e}`,
+    headers: headersLine,
+  };
+  request.get(set, (err, res, body) => {
+    callback(body);
+  });
 };
 
 app.listen(port, function () {
