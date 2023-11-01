@@ -18,8 +18,7 @@ const _ = require("lodash");
 const nodemailer = require("nodemailer");
 const request = require("request");
 const cron = require("node-cron");
-
-// const data = require("./temp.json");
+// const dataPath = require("./temp.json");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -819,14 +818,6 @@ app.delete("/api/del", jwtValidate, (req, res) => {
   }
 });
 
-app.post("/webhook", (req, res) => {
-  const lineevent = req.body.events[0];
-  if (lineevent === undefined) return res.sendStatus(200);
-  // console.log(lineevent);
-  reply(lineevent);
-  res.sendStatus(200);
-});
-
 const mailer = (mail) => {
   var config = {
     host: "smtp.gmail.com",
@@ -893,9 +884,8 @@ app.post("/activated", (req, res) => {
     }
   });
 });
-
-let temp;
-let time;
+// let temp;
+// let time;
 const cal = (e) => {
   let t = "";
   if (e === "" || e === undefined) return t;
@@ -905,21 +895,15 @@ const cal = (e) => {
   t = end - start;
   return t;
 };
-app.get("/aap", (req, res) => {
-  const date = new Date(Date.now());
-  var start = Math.floor((temp % (1000 * 60 * 60)) / (1000 * 60));
-  var end = Math.floor((date % (1000 * 60 * 60)) / (1000 * 60));
-  const aa = end - start;
-  res.json(aa);
-});
-app.post("/webhook", (req, res) => {
-  const lineevent = req.body.events[0];
-  if (lineevent === undefined) return res.sendStatus(200);
-  reply(lineevent);
+
+app.post("/webhook", async (req, res) => {
+  if (req.body.events[0].type !== "message") return res.sendStatus(200);
+  reply(req.body.events[0]);
   res.sendStatus(200);
 });
 
-const reply = async (e) => {
+const reply = (e) => {
+  const tm = getDataId(e);
   let body;
   switch (e.message.text) {
     case "ดูเว็บไซต์":
@@ -935,11 +919,12 @@ const reply = async (e) => {
       post(body);
       break;
     case "ลงทะเบียน":
-      if (temp === undefined || temp === "" || cal(temp) >= 5) {
-        const t = cal(temp) >= 5 ? cal(temp) : cal(e.timestamp);
+      if (tm.temp === undefined || tm.temp === "" || cal(tm) >= 5) {
+        const t = cal(tm.temp) >= 5 ? cal(tm.temp) : cal(e.timestamp);
         if (t < 5) {
-          temp = e.timestamp;
-          time = Date(Date.now());
+          tm.temp = e.timestamp;
+          tm.time = Date(Date.now());
+          editData(e, tm);
           body = JSON.stringify({
             replyToken: e.replyToken,
             messages: [
@@ -949,25 +934,22 @@ const reply = async (e) => {
               },
               {
                 type: "text",
-                text: `1. พิมพ์ชือบริษัท ตัวอย่าง "1-Renewlabour Co.,Ltd"`,
-              },
-              {
-                type: "text",
-                text: `2. พิมพ์ email ที่ลงทะเบียนแล้ว ตัวอย่าง "2-example@renewlabour.com"`,
+                text: `พิมพ์ Email ที่ลงทะเบียนแล้วให้ถูกต้อง\nตัวอย่าง\n"example@renewlabour.com"`,
               },
             ],
           });
           post(body);
         } else {
-          temp = undefined;
-          time = undefined;
+          tm.temp = "";
+          tm.time = "";
+          editData(e, tm);
         }
       }
       break;
     default:
-      if (cal(temp) >= 5 && temp !== undefined && temp !== "") {
-        temp = "";
-        time = "";
+      if (cal(tm.temp) >= 5 && tm.temp !== undefined && tm.temp !== "") {
+        tm.temp = "";
+        editData(e, tm);
         body = JSON.stringify({
           replyToken: e.replyToken,
           messages: [
@@ -982,7 +964,7 @@ const reply = async (e) => {
           ],
         });
         post(body);
-      } else if (cal(temp) <= 5 && temp !== undefined && temp !== "") {
+      } else if (cal(tm.temp) <= 5 && tm.temp !== undefined && tm.temp !== "") {
         const mail = e.message.text;
         const sql = `SELECT email FROM members WHERE email = '${mail}'`;
         try {
@@ -990,8 +972,9 @@ const reply = async (e) => {
             if (result[0] !== undefined) {
               const update = `UPDATE members SET lineID='${e.source.userId}' WHERE email = '${mail}'`;
               connection.query(update, (err, result) => {
-                temp = "";
-                time = "";
+                tm.temp = "";
+                tm.time = "";
+                editData(e, tm);
                 body = JSON.stringify({
                   replyToken: e.replyToken,
                   messages: [
@@ -1012,8 +995,8 @@ const reply = async (e) => {
                 post(body);
               });
             } else {
-              temp = "";
-              time = "";
+              tm.temp = "";
+              editData(e, tm);
               body = JSON.stringify({
                 replyToken: e.replyToken,
                 messages: [
@@ -1035,8 +1018,8 @@ const reply = async (e) => {
             }
           });
         } catch (err) {
-          temp = "";
-          time = "";
+          tm.temp = "";
+          editData(e, tm);
           body = JSON.stringify({
             replyToken: e.replyToken,
             messages: [
@@ -1052,11 +1035,13 @@ const reply = async (e) => {
           });
           post(body);
         }
-      } else if (time === undefined || time === "" || cal(time) >= 30) {
-        const t = cal(time) >= 30 ? cal(time) : cal(e.timestamp);
+      } else if (tm.time === "" || cal(tm.time) >= 30) {
+        const t = cal(tm.time) >= 30 ? cal(tm.time) : cal(e.timestamp);
         if (t < 30) {
-          time = e.timestamp;
-          getProfile(e.source.userId, (call) => {
+          tm.time = e.timestamp;
+          editData(e, tm);
+          const id = e.source.userId;
+          getProfile(id, (call) => {
             const profile = JSON.parse(call);
             body = JSON.stringify({
               replyToken: e.replyToken,
@@ -1078,7 +1063,8 @@ const reply = async (e) => {
             post(body);
           });
         } else {
-          time = "";
+          tm.time = e.timestamp;
+          editData(e, tm);
         }
       }
       break;
@@ -1150,6 +1136,71 @@ const getProfile = (e, callback) => {
   request.get(set, (err, res, body) => {
     callback(body);
   });
+};
+
+// app.post("/aap", (req, res) => {
+//   //  console.log(dataPath);
+//   const teem = { temp: "123", time: "456" };
+//   createData(req.body, teem);
+//   res.json({ message: "send" });
+// });
+
+const saveData = (data) => {
+  const stringifyData = JSON.stringify(data);
+  fs.writeFileSync("./temp.json", stringifyData);
+};
+const getData = () => {
+  const jsonData = fs.readFileSync("./temp.json");
+  return JSON.parse(jsonData);
+};
+const getdatas = (param) => {
+  var exist = getData();
+  console.log(param);
+  const id = !param.source ? "" : param.source.userId;
+  return exist.find((value) => value.id === id);
+};
+const getDataId = (param) => {
+  var exist = getData();
+  const id = !param.source ? "" : param.source.userId;
+  const count = exist.filter((value) => value.id === id);
+  if (count.length > 1) {
+    delData(param);
+  } else if (count.length >= 1) {
+    return exist.find((value) => value.id === id);
+  } else {
+    createData(param);
+  }
+  return getdatas(param);
+};
+
+const createData = (param, body) => {
+  var exist = getData();
+  const newId = param.source.userId;
+  let bo = { id: newId, temp: "", time: "" };
+  exist.push(bo);
+  saveData(exist);
+};
+
+const editData = (param, body) => {
+  var exist = getData();
+  const Id = param.source.userId;
+  const index = exist.findIndex((value) => value.id === Id);
+  exist[index] = { ...body };
+  saveData(exist);
+};
+
+const delData = (param) => {
+  var exist = getData();
+  const Id = param.source.userId;
+  const a = exist.find((value) => value.id === Id);
+  let temps = [];
+  for (const x in exist) {
+    if (exist[x].id !== Id) {
+      temps.push(exist[x]);
+    }
+  }
+  temps.push(a);
+  saveData(temps);
 };
 
 app.listen(port, function () {
