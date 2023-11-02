@@ -18,6 +18,7 @@ const _ = require("lodash");
 const nodemailer = require("nodemailer");
 const request = require("request");
 const cron = require("node-cron");
+const { count } = require("console");
 // const dataPath = require("./temp.json");
 
 app.use(bodyParser.json());
@@ -896,13 +897,96 @@ const cal = (e) => {
   return t;
 };
 
-app.post("/webhook", async (req, res) => {
+app.get("/date", (req, res) => {
+  const gg = dateTime();
+  dash();
+  res.json({ date: gg });
+});
+const dash = async () => {
+  const sql = `SELECT * FROM persons WHERE member_group = 1`;
+  let arr = [];
+
+  connection.query(sql, (err, result) => {
+    if (err) console.log(err);
+
+    for (const x in result) {
+      arr.push((result[x] = { ...result[x], ...calDate(result[x]) }));
+    }
+    const count = countStatus(arr);
+  });
+
+  // console.log(arr);
+};
+const countStatus = async (e) => {
+  let co = { visa: {}, passport: {}, ninety: {}, workpermit: {} };
+  let state = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let s = [0, 1, 3, 4, 5, 6];
+  co.visa = { ...state };
+  co.passport = { ...state };
+  co.ninety = { ...state };
+  co.workpermit = { ...state };
+  console.log(e);
+  for (const x in co) {
+    for (const y in co[x]) {
+      // console.log(co[x][y]);
+      const no = parseInt(y);
+      const a = (val) => val[x] === no;
+      co[x][y] = e.filter(a).length;
+    }
+  }
+  console.log(co);
+  // return co;
+};
+const calDate = (res) => {
+  const { visaext, workpermitext, ninetyexp, passportexp } = res;
+  let obj = { status: 5, visa: "", passport: "", ninety: "", workpermit: "" };
+  obj.workpermit = dateTime(workpermitext);
+  obj.visa = dateTime(visaext);
+  obj.ninety = dateTime(ninetyexp);
+  obj.passport = dateTime(passportexp);
+  for (const x in obj) {
+    if (x !== "status") {
+      switch (true) {
+        case obj[x] <= 0 && obj[x] !== "":
+          obj.status = obj.status <= 1 ? obj.status : 1;
+          obj[x] = 1;
+          break;
+        case obj[x] > 0 && obj[x] <= 7:
+          obj.status = obj.status <= 2 ? obj.status : 2;
+          obj[x] = 2;
+          break;
+        case obj[x] >= 7 && obj[x] <= 15:
+          obj.status = obj.status <= 3 ? obj.status : 3;
+          obj[x] = 3;
+          break;
+        case obj[x] > 15:
+          obj.status = obj.status <= 4 ? obj.status : 4;
+          obj[x] = 4;
+          break;
+        default:
+          obj.status = obj.status <= 5 ? obj.status : 5;
+          obj[x] = 5;
+          break;
+      }
+    }
+  }
+  return obj;
+};
+const dateTime = (e) => {
+  let date = new Date(e);
+  let caldate =
+    Math.floor(date / 86400e3) + 1 - Math.floor(new Date(Date.now()) / 86400e3);
+  return (caldate = isNaN(caldate) ? "" : caldate);
+};
+
+app.post("/webhook", (req, res) => {
   if (req.body.events[0].type !== "message") return res.sendStatus(200);
   reply(req.body.events[0]);
   res.sendStatus(200);
 });
 
 const reply = (e) => {
+  console.log(e);
   const tm = getDataId(e);
   let body;
   switch (e.message.text) {
@@ -1018,8 +1102,6 @@ const reply = (e) => {
             }
           });
         } catch (err) {
-          tm.temp = "";
-          editData(e, tm);
           body = JSON.stringify({
             replyToken: e.replyToken,
             messages: [
@@ -1034,12 +1116,12 @@ const reply = (e) => {
             ],
           });
           post(body);
-        }
-      } else if (tm.time === "" || cal(tm.time) >= 30) {
-        const t = cal(tm.time) >= 30 ? cal(tm.time) : cal(e.timestamp);
-        if (t < 30) {
-          tm.time = e.timestamp;
+          tm.temp = "";
           editData(e, tm);
+        }
+      } else if (tm.time === "" || cal(tm.time) >= 720) {
+        const t = cal(tm.time) >= 720 ? cal(tm.time) : cal(e.timestamp);
+        if (t < 720) {
           const id = e.source.userId;
           getProfile(id, (call) => {
             const profile = JSON.parse(call);
@@ -1061,9 +1143,11 @@ const reply = (e) => {
               ],
             });
             post(body);
+            tm.time = e.timestamp;
+            editData(e, tm);
           });
         } else {
-          tm.time = e.timestamp;
+          tm.time = "";
           editData(e, tm);
         }
       }
@@ -1077,7 +1161,7 @@ const headersLine = {
 };
 
 cron.schedule(
-  "* * 8 * 0-5",
+  "36 15 * * 1-5",
   () => {
     postschedule();
   },
@@ -1137,13 +1221,6 @@ const getProfile = (e, callback) => {
     callback(body);
   });
 };
-
-// app.post("/aap", (req, res) => {
-//   //  console.log(dataPath);
-//   const teem = { temp: "123", time: "456" };
-//   createData(req.body, teem);
-//   res.json({ message: "send" });
-// });
 
 const saveData = (data) => {
   const stringifyData = JSON.stringify(data);
