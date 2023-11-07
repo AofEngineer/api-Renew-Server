@@ -372,15 +372,16 @@ app.get("/files/:filepath", (req, res, next) => {
   const { filepath } = param;
   let array = [];
   let text = "";
-  console.log(filepath);
   array = filepath.split("_");
-  console.log(array);
   for (const x in array) {
     text += `/${array[x]}`;
   }
   const filePath = `./files${text}`;
-  console.log(filePath);
-  fs.readFileSync(filePath);
+  try {
+    fs.readFileSync(filePath);
+  } catch (err) {
+    res.status(404).json("image not found");
+  }
 });
 app.get("/download/:filename", (req, res) => {
   const param = req.params;
@@ -856,7 +857,19 @@ app.post("/activatecode", (req, res) => {
     mailer({
       to: mail,
       subject: "Activation Code",
-      text: `Code: ${randomnumber}`,
+      html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html dir="ltr" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office" lang="en"><head><meta charset="UTF-8"><meta content="width=device-width, initial-scale=1" name="viewport"><meta name="x-apple-disable-message-reformatting"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta content="telephone=no" name="format-detection"><title>Activate Code</title> <!--[if (mso 16)]><style type="text/css">     a {text-decoration: none;}     </style><![endif]--> <!--[if gte mso 9]><style>sup { font-size: 100% !important; }</style><![endif]--> <!--[if gte mso 9]><xml> <o:OfficeDocumentSettings> <o:AllowPNG></o:AllowPNG> <o:PixelsPerInch>96</o:PixelsPerInch> </o:OfficeDocumentSettings> </xml>
+      <![endif]--><style type="text/css">.rollover:hover .rollover-first { max-height:0px!important; display:none!important; } .rollover:hover .rollover-second { max-height:none!important; display:inline-block!important; } .rollover div { font-size:0px; } u + .body img ~ div div { display:none; } #outlook a { padding:0; } span.MsoHyperlink,span.MsoHyperlinkFollowed { color:inherit; mso-style-priority:99; } a.es-button { mso-style-priority:100!important; text-decoration:none!important; } a[x-apple-data-detectors] { color:inherit!important; text-decoration:none!important; font-size:inherit!important; font-family:inherit!important; font-weight:inherit!important; line-height:inherit!important; } .es-desk-hidden { display:none; float:left; overflow:hidden; width:0; max-height:0; line-height:0; mso-hide:all; } .es-button-border:hover > a.es-button { color:#ffffff!important; }
+      @media only screen and (max-width:600px) {*[class="gmail-fix"] { display:none!important } p, a { line-height:150%!important } h1, h1 a { line-height:120%!important } h2, h2 a { line-height:120%!important } h3, h3 a { line-height:120%!important } h4, h4 a { line-height:120%!important } h5, h5 a { line-height:120%!important } h6, h6 a { line-height:120%!important } h1 { font-size:30px!important; text-align:left } h2 { font-size:24px!important; text-align:left } h3 { font-size:20px!important; text-align:left } h4 { font-size:24px!important; text-align:left } h5 { font-size:20px!important; text-align:left } h6 { font-size:16px!important; text-align:left } .es-header-body h1 a, .es-content-body h1 a, .es-footer-body h1 a { font-size:30px!important } .es-header-body h2 a, .es-content-body h2 a, .es-footer-body h2 a { font-size:24px!important } .es-header-body h3 a, .es-content-body h3 a, .es-footer-body h3 a { font-size:20px!important }
+       .es-header-body h4 a, .es-content-body h4 a, .es-footer-body h4 a { font-size:24px!important } .es-header-body h5 a, .es-content-body h5 a, .es-footer-body h5 a { font-size:20px!important } .es-header-body h6 a, .es-content-body h6 a, .es-footer-body h6 a { font-size:16px!important } .es-menu td a { font-size:14px!important } .es-header-body p, .es-header-body a { font-size:14px!important } .es-content-body p, .es-content-body a { font-size:14px!important } .es-footer-body p, .es-footer-body a { font-size:14px!important } .es-infoblock p, .es-infoblock a { font-size:12px!important } .es-m-txt-c, .es-m-txt-c h1, .es-m-txt-c h2, .es-m-txt-c h3, .es-m-txt-c h4, .es-m-txt-c h5, .es-m-txt-c h6 { text-align:center!important } .es-m-txt-r, .es-m-txt-r h1, .es-m-txt-r h2, .es-m-txt-r h3, .es-m-txt-r h4, .es-m-txt-r h5, .es-m-txt-r h6 { text-align:right!important }
+       .es-m-txt-j, .es-m-txt-j h1, .es-m-txt-j h2, .es-m-txt-j h3, .es-m-txt-j h4, .es-m-txt-j h5, .es-m-txt-j h6 { text-align:justify!important } .es-m-txt-l, .es-m-txt-l h1, .es-m-txt-l h2, .es-m-txt-l h3, .es-m-txt-l h4, .es-m-txt-l h5, .es-m-txt-l h6 { text-align:left!important } .es-m-txt-r img, .es-m-txt-c img, .es-m-txt-l img { display:inline!important } .es-m-txt-r .rollover:hover .rollover-second, .es-m-txt-c .rollover:hover .rollover-second, .es-m-txt-l .rollover:hover .rollover-second { display:inline!important } .es-m-txt-r .rollover div, .es-m-txt-c .rollover div, .es-m-txt-l .rollover div { line-height:0!important; font-size:0!important } .es-spacer { display:inline-table } a.es-button, button.es-button { font-size:18px!important; line-height:120%!important } a.es-button, button.es-button, .es-button-border { display:inline-block!important } .es-m-fw, .es-m-fw.es-fw, .es-m-fw .es-button { display:block!important }
+       .es-m-il, .es-m-il .es-button, .es-social, .es-social td, .es-menu { display:inline-block!important } .es-adaptive table, .es-left, .es-right { width:100%!important } .es-content table, .es-header table, .es-footer table, .es-content, .es-footer, .es-header { width:100%!important; max-width:600px!important } .adapt-img { width:100%!important; height:auto!important } .es-mobile-hidden, .es-hidden { display:none!important } .es-desk-hidden { width:auto!important; overflow:visible!important; float:none!important; max-height:inherit!important; line-height:inherit!important } tr.es-desk-hidden { display:table-row!important } table.es-desk-hidden { display:table!important } td.es-desk-menu-hidden { display:table-cell!important } .es-menu td { width:1%!important } table.es-table-not-adapt, .esd-block-html table { width:auto!important } .es-social td { padding-bottom:10px } .h-auto { height:auto!important }
+       .es-text-7830, .es-text-7830 p, .es-text-7830 a, .es-text-7830 h1, .es-text-7830 h2, .es-text-7830 h3, .es-text-7830 h4, .es-text-7830 h5, .es-text-7830 h6, .es-text-7830 ul, .es-text-7830 ol, .es-text-7830 li, .es-text-7830 span, .es-text-7830 sup, .es-text-7830 sub, .es-text-7830 u, .es-text-7830 b, .es-text-7830 strong, .es-text-7830 em, .es-text-7830 i { font-size:24px!important } .es-text-2733, .es-text-2733 p, .es-text-2733 a, .es-text-2733 h1, .es-text-2733 h2, .es-text-2733 h3, .es-text-2733 h4, .es-text-2733 h5, .es-text-2733 h6, .es-text-2733 ul, .es-text-2733 ol, .es-text-2733 li, .es-text-2733 span, .es-text-2733 sup, .es-text-2733 sub, .es-text-2733 u, .es-text-2733 b, .es-text-2733 strong, .es-text-2733 em, .es-text-2733 i { font-size:24px!important }
+       .es-text-8565, .es-text-8565 p, .es-text-8565 a, .es-text-8565 h1, .es-text-8565 h2, .es-text-8565 h3, .es-text-8565 h4, .es-text-8565 h5, .es-text-8565 h6, .es-text-8565 ul, .es-text-8565 ol, .es-text-8565 li, .es-text-8565 span, .es-text-8565 sup, .es-text-8565 sub, .es-text-8565 u, .es-text-8565 b, .es-text-8565 strong, .es-text-8565 em, .es-text-8565 i { font-size:24px!important } .es-text-3120, .es-text-3120 p, .es-text-3120 a, .es-text-3120 h1, .es-text-3120 h2, .es-text-3120 h3, .es-text-3120 h4, .es-text-3120 h5, .es-text-3120 h6, .es-text-3120 ul, .es-text-3120 ol, .es-text-3120 li, .es-text-3120 span, .es-text-3120 sup, .es-text-3120 sub, .es-text-3120 u, .es-text-3120 b, .es-text-3120 strong, .es-text-3120 em, .es-text-3120 i { font-size:24px!important }
+       .es-text-8586, .es-text-8586 p, .es-text-8586 a, .es-text-8586 h1, .es-text-8586 h2, .es-text-8586 h3, .es-text-8586 h4, .es-text-8586 h5, .es-text-8586 h6, .es-text-8586 ul, .es-text-8586 ol, .es-text-8586 li, .es-text-8586 span, .es-text-8586 sup, .es-text-8586 sub, .es-text-8586 u, .es-text-8586 b, .es-text-8586 strong, .es-text-8586 em, .es-text-8586 i { font-size:36px!important } }</style>
+       </head> <body class="body" style="width:100%;height:100%;padding:0;Margin:0"><div dir="ltr" class="es-wrapper-color" lang="en" style="background-color:#FFFFFF"> <!--<[if gte mso 9]> <v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t"> <v:fill type="tile" color="#ffffff"></v:fill> </v:background> <![endif]--><table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;padding:0;Margin:0;width:100%;height:100%;background-color:#FFFFFF"><tr><td valign="top" style="padding:0;Margin:0;padding-top:50px;padding-bottom:50px"><table class="es-content" cellspacing="0" cellpadding="0" align="center" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;width:100%;table-layout:fixed !important"><tr>
+      <td align="center" style="padding:0;Margin:0"><table class="es-content-body" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;background-color:#FFFFFF;width:600px"><tr><td align="left" bgcolor="#ffffff" style="padding:0;Margin:0;padding-right:20px;padding-left:20px"><table cellspacing="0" cellpadding="0" align="right" class="es-right" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:right"><tr><td valign="top" align="center" style="padding:0;Margin:0;width:560px"><table width="100%" cellspacing="0" cellpadding="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px"><tr>
+      <td align="center" style="padding:0;Margin:0;padding-top:40px;padding-bottom:40px;font-size:0"><img class="adapt-img" src="https://9feij1drp2.execute-api.ap-southeast-2.amazonaws.com/files/1.jpg" alt="" width="560" height="125" style="display:block;font-size:14px;border:0;outline:none;text-decoration:none"></td> </tr><tr><td align="center" class="es-m-txt-c" style="padding:0;Margin:0"><h1 style="Margin:0;font-family:arial, 'helvetica neue', helvetica, sans-serif;mso-line-height-rule:exactly;letter-spacing:0;font-size:30px;font-style:normal;font-weight:normal;line-height:36px;color:#333333">Activate Code</h1></td></tr><tr><td align="center" style="padding:20px;Margin:0;font-size:0"><table border="0" width="100%" height="100%" cellpadding="0" cellspacing="0" class="es-spacer" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px"><tr>
+      <td style="padding:0;Margin:0;border-bottom:1px solid #333333;background:none;height:1px;width:100%;margin:0px"></td></tr></table></td></tr> <tr><td align="center" class="es-text-8586" style="padding:0;Margin:0;padding-top:40px;padding-bottom:40px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:54px;letter-spacing:0;color:#333333;font-size:36px">${randomnumber}</p></td></tr></table></td></tr></table></td></tr></table></td></tr></table></td></tr></table></div></body></html>`,
     });
     res.status(200).json({ status: "ok", message: "Email has been sent" });
   });
@@ -897,45 +910,119 @@ const cal = (e) => {
   return t;
 };
 
-app.get("/date", (req, res) => {
-  const gg = dateTime();
-  dash();
-  res.json({ date: gg });
+app.post("/dashboard", (req, res) => {
+  const { member_group } = req.body;
+  member_group;
+  dash(member_group, (data) => {
+    const count = countStatus(data);
+    const countM = countMonth(data);
+    return res.status(200).json({ data, count, countM });
+  });
 });
-const dash = async () => {
-  const sql = `SELECT * FROM persons WHERE member_group = 1`;
-  let arr = [];
 
+const dash = (id, callback) => {
+  const sql = `SELECT * FROM persons WHERE member_group = ${id}`;
+  let arr = [];
   connection.query(sql, (err, result) => {
     if (err) console.log(err);
-
     for (const x in result) {
       arr.push((result[x] = { ...result[x], ...calDate(result[x]) }));
     }
-    const count = countStatus(arr);
+    return callback(arr);
   });
-
-  // console.log(arr);
 };
-const countStatus = async (e) => {
-  let co = { visa: {}, passport: {}, ninety: {}, workpermit: {} };
+const countMonth = (e) => {
+  let Dash = { visaM: 0, passportM: 0, workpermitM: 0, ninetyM: 0 };
+  let month = {
+    Jan: Dash,
+    Feb: Dash,
+    Mar: Dash,
+    Apr: Dash,
+    May: Dash,
+    Jun: Dash,
+    Jul: Dash,
+    Aug: Dash,
+    Sep: Dash,
+    Oct: Dash,
+    Nov: Dash,
+    Dec: Dash,
+  };
+  let arr = [];
+  for (const x in e) {
+    arr.push((e[x] = { ...e[x], ...dateMonth(e[x]) }));
+  }
+  const now = new Date(Date.now());
+  const str = now.getFullYear().toString();
+  for (const x in month) {
+    let Dash = { visaM: 0, passportM: 0, workpermitM: 0, ninetyM: 0 };
+    for (const y in month[x]) {
+      let a = "";
+      let b = "";
+      a = `${x}/${str}`;
+      c = (val) => val[y] === a;
+      b = arr.filter(c).length;
+      Dash[y] = b;
+      month[x] = Dash;
+    }
+  }
+  return month;
+};
+
+const dateMonth = (e) => {
+  let months = { visaM: "", passportM: "", workpermitM: "", ninetyM: "" };
+  months.visaM = Mons(e.visaext);
+  months.passportM = Mons(e.passportexp);
+  months.workpermitM = Mons(e.workpermitext);
+  months.ninetyM = Mons(e.ninetyexp);
+  return months;
+};
+const Mons = (event) => {
+  let Month = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const newdate = new Date(event);
+  const month = Month[newdate.getMonth()];
+  const year = newdate.getFullYear();
+  const cal = `${month}/${year}`;
+  return cal;
+};
+const countStatus = (e) => {
+  // 1 = expire, 2 = urgent, 3 = warning, 4 = normal, 5 = not data
+  let co = { sum: {}, visa: {}, passport: {}, ninety: {}, workpermit: {} };
   let state = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  let s = [0, 1, 3, 4, 5, 6];
   co.visa = { ...state };
   co.passport = { ...state };
   co.ninety = { ...state };
   co.workpermit = { ...state };
-  console.log(e);
+  co.sum = { total: "", ...state };
   for (const x in co) {
     for (const y in co[x]) {
-      // console.log(co[x][y]);
       const no = parseInt(y);
-      const a = (val) => val[x] === no;
-      co[x][y] = e.filter(a).length;
+      if (x === "sum") {
+        const a = (val) => val.status === no;
+        if (y === "total") {
+          co[x][y] = e.length;
+        } else {
+          co[x][y] = e.filter(a).length;
+        }
+      } else {
+        const a = (val) => val[x] === no;
+        co[x][y] = e.filter(a).length;
+      }
     }
   }
-  console.log(co);
-  // return co;
+  return co;
 };
 const calDate = (res) => {
   const { visaext, workpermitext, ninetyexp, passportexp } = res;
@@ -972,6 +1059,7 @@ const calDate = (res) => {
   }
   return obj;
 };
+
 const dateTime = (e) => {
   let date = new Date(e);
   let caldate =
@@ -1161,44 +1249,57 @@ const headersLine = {
 };
 
 cron.schedule(
-  "36 15 * * 1-5",
+  "9 14 * * 1-5",
   () => {
-    postschedule();
+    const sql = `SELECT * FROM member_group`;
+    connection.query(sql, (err, result) => {
+      if (err) console.log(err);
+      for (const x in result) {
+        if (x !== "0") {
+          dash(x, async (data) => {
+            const count = await countStatus(data);
+            connection.query(
+              `SELECT lineID FROM members WHERE member_group = ${x}`,
+              (err, ressult) => {
+                postschedule(count, ressult);
+              }
+            );
+          });
+        }
+      }
+    });
   },
   {
     scheduled: true,
     timezone: "Asia/Bangkok",
   }
 );
-const postschedule = () => {
-  const body = JSON.stringify({
-    to: "U975c245c59d19497370d342fb364cf58",
-    messages: [
-      {
-        type: "text",
-        text: `ไม่ต้องตกใจ`,
-      },
-      {
-        type: "text",
-        text: "ทดสอบระบบตั้งเวลาส่งข้อความ",
-      },
-      {
-        type: "text",
-        text: "จำนวนแรงงานที่มีอยู่ตอนนนี้ 10 คน\nwarning 1 คน\nurgent 2 คน\nexpire 2 คน",
-      },
-    ],
-  });
-  request.post(
-    {
-      url: "https://api.line.me/v2/bot/message/push",
-      headers: headersLine,
-      body: body,
-    },
-    (err, res, body) => {
-      console.log("status = " + res.statusCode);
+const postschedule = (e, line) => {
+  for (const x in line) {
+    if (line[x].lineID !== "") {
+      const body = JSON.stringify({
+        to: line[x].lineID,
+        messages: [
+          {
+            type: "text",
+            text: `จำนวนแรงงานที่มีอยู่ตอนนนี้ ${e.sum.total} คน\nexpire ${e.sum["1"]} คน\nurgent ${e.sum["2"]} คน\nwarning ${e.sum["3"]} คน\nสถานะปกติ ${e.sum["4"]} คน\nยังไม่ได้เพิ่มข้อมูล ${e.sum["5"]}`,
+          },
+        ],
+      });
+      request.post(
+        {
+          url: "https://api.line.me/v2/bot/message/push",
+          headers: headersLine,
+          body: body,
+        },
+        (err, result, body) => {
+          console.log("status = " + result.statusCode);
+        }
+      );
     }
-  );
+  }
 };
+
 const post = (body) => {
   request.post(
     {
