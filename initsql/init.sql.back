@@ -1,14 +1,25 @@
+
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+07:00";
 
+
+CREATE TABLE `member_group` (
+  `id` int(11) NOT NULL,
+  `company_id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
 CREATE TABLE `branch` (
-  `branch_id` int(11) NOT NULL,
+  `branch_id` int(100) NOT NULL,
   `branch_no` varchar(100) NOT NULL,
   `branchname` varchar(100) NOT NULL,
   `member_group` int(11) NOT NULL,
   `company_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+INSERT INTO `member_group` (`id`) VALUES
+(1);
 
 CREATE TABLE `company` (
   `cpn_id` int(11) NOT NULL,
@@ -32,8 +43,8 @@ CREATE TABLE `company` (
   `logo` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-INSERT INTO `company` (`cpn_id`, `cpn_n`, `cpn_build`, `cpn_ad`, `cpn_fl`, `cpn_vill`, `cpn_room`, `cpn_moo`, `cpn_soi`, `cpn_st`, `cpn_coun`, `cpn_subdist`, `cpn_dist`, `cpn_prov`, `cpn_zip`, `c_iden`, `member_group`, `branch_id`, `logo`) VALUES
-(0, 'ว่างงาน', NULL, '', NULL, NULL, NULL, NULL, NULL, NULL, '', '', '', 'ว่างงาน', '', '', 0, 0, '');
+INSERT INTO `company` (`cpn_id`, `cpn_n`, `cpn_build`, `cpn_ad`, `cpn_fl`, `cpn_vill`, `cpn_room`, `cpn_moo`, `cpn_soi`, `cpn_st`, `cpn_coun`, `cpn_subdist`, `cpn_dist`, `cpn_prov`, `cpn_zip`, `c_iden`, `member_group`, `branch_id`) VALUES
+(0, 'ว่างงาน', NULL, '', NULL, NULL, NULL, NULL, NULL, NULL, '', '', '', '', '', '', 1, 0);
 
 CREATE TABLE `members` (
   `mem_id` int(11) NOT NULL,
@@ -53,23 +64,8 @@ CREATE TABLE `members` (
   `m_del` int(11) NOT NULL,
   `m_admin` tinyint(1) NOT NULL,
   `m_root` tinyint(1) NOT NULL,
-  `m_picpath` varchar(255) NOT NULL,
-  `lineID` varchar(50) NOT NULL
+  `m_picpath` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-INSERT INTO `members` (`mem_id`, `member_name`, `member_lastname`, `member_group`, `username`, `password`, `email`, `tel`, `activation_code`, `refreshtoken`, `company_id`, `m_read`, `m_add`, `m_edit`, `m_del`, `m_admin`, `m_root`, `m_picpath`, `lineID`) VALUES
-(1, 'admin', 'admon', 1, 'admin', 'Gurusupp0rt!', '', '', '', '',0 ,0 , 0, 0, 0, 0,0 , '', ''),
-(2, 'Thipnapha', 'Thappho', 2, 'Thipnapha.t', 'Renewal$', '', '', '', '', 0, 0, 0, 0, 0,0 ,0 , '', '');
-
-CREATE TABLE `member_group` (
-  `id` int(11) NOT NULL,
-  `company_id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-INSERT INTO `member_group` (`id`, `company_id`) VALUES
-(0, 0),
-(1, 0),
-(2, 0);
 
 CREATE TABLE `persons` (
   `person_id` int(11) NOT NULL,
@@ -97,11 +93,10 @@ CREATE TABLE `persons` (
   `ninetyexp` varchar(25) DEFAULT NULL,
   `pathninety` varchar(255) DEFAULT NULL,
   `member_group` int(11) NOT NULL,
-  `company_id` int(11) DEFAULT NULL,
+  `company_id` int(255) DEFAULT NULL,
   `picpath` varchar(255) DEFAULT NULL,
   `nickname` varchar(25) DEFAULT NULL,
-  `other` varchar(255) DEFAULT NULL,
-  `company_name` varchar(50) DEFAULT NULL
+  `other` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 ALTER TABLE `branch`
@@ -113,7 +108,6 @@ ALTER TABLE `company`
   ADD PRIMARY KEY (`cpn_id`),
   ADD KEY `member_group` (`member_group`);
 
-
 ALTER TABLE `members`
   ADD PRIMARY KEY (`mem_id`),
   ADD KEY `member_group` (`member_group`);
@@ -124,22 +118,23 @@ ALTER TABLE `member_group`
 
 ALTER TABLE `persons`
   ADD PRIMARY KEY (`person_id`),
-  ADD KEY `member_group` (`member_group`);
+  ADD KEY `member_group` (`member_group`),
+  ADD KEY `company_id` (`company_id`);
 
 ALTER TABLE `branch`
-  MODIFY `branch_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `branch_id` int(100) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 ALTER TABLE `company`
-  MODIFY `cpn_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=0;
+  MODIFY `cpn_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 ALTER TABLE `members`
-  MODIFY `mem_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=0;
+  MODIFY `mem_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 ALTER TABLE `member_group`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=0;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 ALTER TABLE `persons`
-  MODIFY `person_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=0;
+  MODIFY `person_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;
 
 ALTER TABLE `branch`
   ADD CONSTRAINT `branch_ibfk_1` FOREIGN KEY (`member_group`) REFERENCES `member_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -153,5 +148,3 @@ ALTER TABLE `members`
 ALTER TABLE `persons`
   ADD CONSTRAINT `persons_ibfk_3` FOREIGN KEY (`member_group`) REFERENCES `member_group` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
-
-

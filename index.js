@@ -18,8 +18,6 @@ const _ = require("lodash");
 const nodemailer = require("nodemailer");
 const request = require("request");
 const cron = require("node-cron");
-const { count } = require("console");
-// const dataPath = require("./temp.json");
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -86,10 +84,7 @@ const currentFile = (req, res, next) => {
     res.status(403).json({ message: err });
   }
 };
-const fils = () => {
-  const m = 1;
-  fs.mkdirSync(path.join(`./files`, m.toString()));
-};
+
 const file = async (req, res, next) => {
   const body = req.body;
   const company =
@@ -209,13 +204,6 @@ const Addcompany = (req, res, next) => {
   });
 };
 
-app.post("/test", fils, (req, res, next) => {
-  // res.json({
-  //   status: req.successful,
-  //   path: req.pathname,
-  //   pathdir: req.dirname,
-  // });
-});
 app.post("/testdel", currentFile, deletefile, (req, res, next) => {
   res.json(req.successful);
 });
@@ -230,7 +218,7 @@ const jwtGenerate = (user) => {
     { user: user.username, id: user.mem_id },
     enva.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: "3m",
+      expiresIn: "30m",
       algorithm: "HS256",
     }
   );
@@ -243,7 +231,7 @@ const jwtRefreshTokenGenerate = (user) => {
     { user: user.username, id: user.mem_id },
     enva.REFRESH_TOKEN_SECRET,
     {
-      expiresIn: "1d",
+      expiresIn: "7d",
       algorithm: "HS256",
     }
   );
@@ -252,11 +240,11 @@ const jwtRefreshTokenGenerate = (user) => {
 
 const jwtValidate = (req, res, next) => {
   try {
-    // if (!req.headers.authorization) return res.sendStatus(401);
-    // const token = req.headers.authorization;
-    // jwt.verify(token, enva.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    //   if (err) throw new Error();
-    // });
+    if (!req.headers.authorization) return res.sendStatus(401);
+    const token = req.headers.authorization;
+    jwt.verify(token, enva.ACCESS_TOKEN_SECRET, (err, decoded) => {
+      if (err) throw res.send(err);
+    });
     next();
   } catch (error) {
     return res.status(403).json();
@@ -265,29 +253,21 @@ const jwtValidate = (req, res, next) => {
 
 const jwtRefreshTokenValidate = (req, res, next) => {
   try {
-    if (!req.headers.authorization)
-      return res.status(401).json({ message: "no Authorization" });
-    // if (!req.body.user) return res.status(401).json({message: "no body user"});
-    if (!req.headers.tokenrefresh)
-      return res.status(401).json({ message: "no tokenrefresh" });
+    const refreshToken = req.headers["refreshtoken"]
+      ? req.headers["refreshtoken"]
+      : "";
     const decodetoken = jwt.decode(
       req.headers.authorization,
       enva.ACCESS_TOKEN_SECRET
     );
-    // return res.json(req.headers.authorization);
     const sql = `SELECT * FROM members WHERE mem_id = '${decodetoken.id}'`;
     connection.query(sql, (err, results) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ status: "Error", message: "Database Not Connect " });
-      if (
-        !bcrypt.compareSync(results[0].refreshtoken, req.headers.tokenrefresh)
-      )
-        return res.json({ message: "token not match" });
+      if (err) alert(500, "Error", "Not Connect data", res);
+      const boo = bcrypt.compareSync(results[0].refreshtoken, refreshToken);
+      if (!boo) alert(404, "Error", "Token not match", res);
       const token = results[0].refreshtoken;
       jwt.verify(token, enva.REFRESH_TOKEN_SECRET, (err, decoded) => {
-        if (err) throw new Error(error);
+        if (err) throw new Error(err);
         req.user = decoded;
         req.user.token = token;
         delete req.user.exp;
@@ -296,34 +276,28 @@ const jwtRefreshTokenValidate = (req, res, next) => {
       next();
     });
   } catch (error) {
-    // return res.json(req.body.user);
-    return res
-      .status(403)
-      .json({ message: "Login Expire Please login againt " });
+    const message = "Login Expire Please login againt ";
+    alert(403, "Error", message, res);
   }
 };
 
+const alert = (status, sta, message, res) => {
+  return res.status(status).json({ status: sta, message: message });
+};
 app.post("/login", (req, res) => {
   const { user, hash } = req.body;
   const sql = `SELECT members.* ,c.cpn_id,c.cpn_n FROM members LEFT JOIN company as c ON members.company_id = c.cpn_id WHERE username = '${user}'`;
   connection.query(sql, (err, results) => {
-    if (err)
-      return res
-        .status(500)
-        .json({ message: "Database Not Connect", msg: err });
+    if (err) alert(500, "Error", "Not Connect data", res);
     const index = results.findIndex((e) => e.username === user);
     if (!user || index < 0)
       return res.status(400).json({ status: "Error", message: "User Invalid" });
     const data = results[0];
-
     if (!bcrypt.compareSync(data.password, hash))
-      return res
-        .status(400)
-        .json({ status: "Error", message: "Password Invalid" });
+      alert(400, "Error", "Password Invalid", res);
     const accessToken = jwtGenerate(data);
     const refresh_token = jwtRefreshTokenGenerate(data);
     const sqltoken = `UPDATE members SET refreshtoken='${refresh_token}' WHERE mem_id= ${data.mem_id}`;
-    // return res.json(sqltoken);
     connection.query(sqltoken, res, (err, row) => {
       const refreshToken = bcrypt.hashSync(refresh_token, salt);
       const hashread = bcrypt.hashSync(data.m_read.toString(), salt);
@@ -331,10 +305,7 @@ app.post("/login", (req, res) => {
       const hashedit = bcrypt.hashSync(data.m_edit.toString(), salt);
       const hashdel = bcrypt.hashSync(data.m_del.toString(), salt);
       const admin = bcrypt.hashSync(data.m_admin.toString(), salt);
-      if (err)
-        return res
-          .status(500)
-          .json({ message: "Database Not Connect or Data Invalid" });
+      if (err) alert(500, "Error", "Not Connect data", res);
       res.status(200).json({
         status: "ok",
         message: "Logged in",
@@ -363,7 +334,8 @@ app.post("/login", (req, res) => {
 });
 app.post("/auth", jwtRefreshTokenValidate, (req, res) => {
   const access_token = jwtGenerate(req.user);
-  return res.json({
+  res.json({
+    status: "ok",
     accesstoken: access_token,
   });
 });
@@ -825,8 +797,8 @@ const mailer = (mail) => {
     host: "smtp.gmail.com",
     port: 587,
     auth: {
-      user: "noreply.renewlabour@gmail.com",
-      pass: "lylv shsf zntp zkco",
+      user: "support@renewlabour.com",
+      pass: "yxga pqmj hfcx pzyf",
     },
   };
   var transporter = nodemailer.createTransport(config);
@@ -868,7 +840,7 @@ app.post("/activatecode", (req, res) => {
        .es-text-8586, .es-text-8586 p, .es-text-8586 a, .es-text-8586 h1, .es-text-8586 h2, .es-text-8586 h3, .es-text-8586 h4, .es-text-8586 h5, .es-text-8586 h6, .es-text-8586 ul, .es-text-8586 ol, .es-text-8586 li, .es-text-8586 span, .es-text-8586 sup, .es-text-8586 sub, .es-text-8586 u, .es-text-8586 b, .es-text-8586 strong, .es-text-8586 em, .es-text-8586 i { font-size:36px!important } }</style>
        </head> <body class="body" style="width:100%;height:100%;padding:0;Margin:0"><div dir="ltr" class="es-wrapper-color" lang="en" style="background-color:#FFFFFF"> <!--<[if gte mso 9]> <v:background xmlns:v="urn:schemas-microsoft-com:vml" fill="t"> <v:fill type="tile" color="#ffffff"></v:fill> </v:background> <![endif]--><table class="es-wrapper" width="100%" cellspacing="0" cellpadding="0" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;padding:0;Margin:0;width:100%;height:100%;background-color:#FFFFFF"><tr><td valign="top" style="padding:0;Margin:0;padding-top:50px;padding-bottom:50px"><table class="es-content" cellspacing="0" cellpadding="0" align="center" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;width:100%;table-layout:fixed !important"><tr>
       <td align="center" style="padding:0;Margin:0"><table class="es-content-body" cellspacing="0" cellpadding="0" bgcolor="#ffffff" align="center" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;background-color:#FFFFFF;width:600px"><tr><td align="left" bgcolor="#ffffff" style="padding:0;Margin:0;padding-right:20px;padding-left:20px"><table cellspacing="0" cellpadding="0" align="right" class="es-right" role="none" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px;float:right"><tr><td valign="top" align="center" style="padding:0;Margin:0;width:560px"><table width="100%" cellspacing="0" cellpadding="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px"><tr>
-      <td align="center" style="padding:0;Margin:0;padding-top:40px;padding-bottom:40px;font-size:0"><img class="adapt-img" src="https://9feij1drp2.execute-api.ap-southeast-2.amazonaws.com/files/image_oxc.jpg" alt="" width="560" height="125" style="display:block;font-size:14px;border:0;outline:none;text-decoration:none"></td> </tr><tr><td align="center" class="es-m-txt-c" style="padding:0;Margin:0"><h1 style="Margin:0;font-family:arial, 'helvetica neue', helvetica, sans-serif;mso-line-height-rule:exactly;letter-spacing:0;font-size:60px;font-style:normal;font-weight:normal;line-height:36px;color:#333333">Activate Code</h1></td></tr><tr><td align="center" style="padding:20px;Margin:0;font-size:0"><table border="0" width="100%" height="100%" cellpadding="0" cellspacing="0" class="es-spacer" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px"><tr>
+      <td align="center" style="padding:0;Margin:0;padding-top:40px;padding-bottom:40px;font-size:0"><img class="adapt-img" src="https://9feij1drp2.execute-api.ap-southeast-2.amazonaws.com/files/image_oxc.jpg" alt="" width="560" height="165" style="display:block;font-size:14px;border:0;outline:none;text-decoration:none"></td> </tr><tr><td align="center" class="es-m-txt-c" style="padding:0;Margin:0"><h1 style="Margin:0;font-family:arial, 'helvetica neue', helvetica, sans-serif;mso-line-height-rule:exactly;letter-spacing:0;font-size:40px;font-style:normal;font-weight:normal;line-height:36px;color:#333333">Activate Code</h1></td></tr><tr><td align="center" style="padding:20px;Margin:0;font-size:0"><table border="0" width="100%" height="100%" cellpadding="0" cellspacing="0" class="es-spacer" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse;border-spacing:0px"><tr>
       <td style="padding:0;Margin:0;border-bottom:1px solid #333333;background:none;height:1px;width:100%;margin:0px"></td></tr></table></td></tr> <tr><td align="center" class="es-text-8586" style="padding:0;Margin:0;padding-top:40px;padding-bottom:40px"><p style="Margin:0;mso-line-height-rule:exactly;font-family:arial, 'helvetica neue', helvetica, sans-serif;line-height:54px;letter-spacing:0;color:#333333;font-size:36px">${randomnumber}</p></td></tr></table></td></tr></table></td></tr></table></td></tr></table></td></tr></table></div></body></html>`,
     });
     res.status(200).json({ status: "ok", message: "Email has been sent" });
@@ -898,8 +870,7 @@ app.post("/activated", (req, res) => {
     }
   });
 });
-// let temp;
-// let time;
+
 const cal = (e) => {
   let t = "";
   if (e === "" || e === undefined) return t;
@@ -1249,7 +1220,7 @@ const headersLine = {
 };
 
 cron.schedule(
-  "9 14 * * 1-5",
+  "0 11 * * 1-5",
   () => {
     const sql = `SELECT * FROM member_group`;
     connection.query(sql, (err, result) => {
@@ -1382,5 +1353,5 @@ const delData = (param) => {
 };
 
 app.listen(port, function () {
-  console.log(`Server Listen on port ${__dirname} : ${port}`);
+  console.log(`Server Path: ${__dirname} Listen on port  : ${port}`);
 });
