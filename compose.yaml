@@ -9,7 +9,8 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - ./initsql:/docker-entrypoint-initdb.d/init.sql
+      - ./initsql:/docker-entrypoint-initdb.d
+      - ./db-data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
     networks:
       - mynetwork
@@ -39,10 +40,11 @@ services:
       DB_NAME: renewlabour
       ACCESS_TOKEN_SECRET: EiKf9vBVMW0Qiu6EWgzwU7PyCdD0BLxv7ks4kTe4fXvGPDYsS3QT3wugV4ReGopt
       REFRESH_TOKEN_SECRET: 0ueUlWRDDjvu7188rORSqZVuwWUVvJSyPGWw84J3HxgWmW9VKRP4RFzW2Imvb1Jr
+      PORT: 5000
     networks:
       - mynetwork
     volumes:
-      - ./files:/app/files
+      - ./files:/usr/expressdocker/files
 
 networks:
   mynetwork:

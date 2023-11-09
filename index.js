@@ -267,7 +267,7 @@ const jwtRefreshTokenValidate = (req, res, next) => {
       if (!boo) alert(404, "Error", "Token not match", res);
       const token = results[0].refreshtoken;
       jwt.verify(token, enva.REFRESH_TOKEN_SECRET, (err, decoded) => {
-        if (err) throw new Error(err);
+        if (err) alert(500, "Error", "Token not Valid", res);
         req.user = decoded;
         req.user.token = token;
         delete req.user.exp;
@@ -688,6 +688,7 @@ app.post(
 
 app.put("/api/emembers", (req, res) => {
   const postmember = req.body;
+  console.log(postmember);
   const { mem_id, username, member_name } = postmember;
   let text = "";
   for (const x in postmember) {
@@ -715,7 +716,6 @@ app.put("/api/emembers", (req, res) => {
     str = `username = "${username}"`;
   }
   const sql = `UPDATE members SET ${text} WHERE ${str}`;
-  console.log(sql);
   const checkid = `SELECT * FROM members WHERE username = '${username}'`;
   connection.query(checkid, (err, results, fields) => {
     if (err)
@@ -1039,9 +1039,12 @@ const dateTime = (e) => {
 };
 
 app.post("/webhook", (req, res) => {
-  if (req.body.events[0].type !== "message") return res.sendStatus(200);
-  reply(req.body.events[0]);
-  res.sendStatus(200);
+  if (req.body.events[0]) {
+    if (req.body.events[0].type !== "message") return res.sendStatus(200);
+    reply(req.body.events[0]);
+  } else {
+    return res.sendStatus(200);
+  }
 });
 
 const reply = (e) => {

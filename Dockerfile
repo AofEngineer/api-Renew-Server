@@ -1,6 +1,6 @@
 FROM node:18
 
-WORKDIR /usr/expressdocker
+WORKDIR /app
 
 RUN mkdir files
 
