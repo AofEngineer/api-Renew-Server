@@ -12,4 +12,4 @@ RUN npm ci
  
 EXPOSE 5000
 
-CMD ["npm","run", "start"]
+CMD ["npm", "start"]

@@ -218,7 +218,7 @@ const jwtGenerate = (user) => {
     { user: user.username, id: user.mem_id },
     enva.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: "30m",
+      expiresIn: "1d",
       algorithm: "HS256",
     }
   );
@@ -239,16 +239,17 @@ const jwtRefreshTokenGenerate = (user) => {
 };
 
 const jwtValidate = (req, res, next) => {
-  try {
-    if (!req.headers.authorization) return res.sendStatus(401);
-    const token = req.headers.authorization;
-    jwt.verify(token, enva.ACCESS_TOKEN_SECRET, (err, decoded) => {
-      if (err) throw res.send(err);
-    });
-    next();
-  } catch (error) {
-    return res.status(403).json();
-  }
+  // try {
+  //   if (!req.headers.authorization) return res.sendStatus(401);
+  //   const token = req.headers.authorization;
+  //   jwt.verify(token, enva.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  //     if (err) throw err;
+  //   });
+  next();
+  // } catch (error) {
+  //   console.log("tokent expire or error");
+  //   return res.status(403).json({ message: "Error" });
+  // }
 };
 
 const jwtRefreshTokenValidate = (req, res, next) => {
