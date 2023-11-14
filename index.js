@@ -445,17 +445,25 @@ app.post("/api/upload", currentFile, file, (req, res, next) => {
 });
 ///////////////////////// upload file  /////////////////////////
 ///////////////////////// GET /////////////////////////
-app.post("/api/users", jwtValidate, (req, res) => {
+// jwtValidate,
+app.post("/api/users", (req, res) => {
+  // console.log(req.body.member_group);
   if (!req.body.member_group) return res.status();
   const group = req.body.member_group
     ? `WHERE p.member_group = ${req.body.member_group}`
     : ``;
   const sqlget = `SELECT p.*, c.* FROM persons as p LEFT JOIN company as c ON p.company_id = c.cpn_id ${group}`;
   connection.query(sqlget, (err, results, fields) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Database Not Connect or Server OFFLINE" });
+    if (err) return alert(500, "Error", "Not Connect data", res);
+    // return res
+    //   .status(500)
+    //   .json({ message: "Database Not Connect or Server OFFLINE" });
+
+    for (const x in results) {
+      results[x].id = results[x].person_id;
+      results[x].fullName = `${results[x].firstname} ${results[x].lastname}`;
+      results[x].email = "";
+      results[x].allStatus = { ...calDate(results[x]) };
     }
     res.status(200).send({
       status: "ok",
@@ -942,9 +950,9 @@ const countMonth = (e) => {
 
 const dateMonth = (e) => {
   let months = { visaM: "", passportM: "", workpermitM: "", ninetyM: "" };
-  months.visaM = Mons(e.visaext);
+  months.visaM = Mons(e.visaexp);
   months.passportM = Mons(e.passportexp);
-  months.workpermitM = Mons(e.workpermitext);
+  months.workpermitM = Mons(e.workpermitexp);
   months.ninetyM = Mons(e.ninetyexp);
   return months;
 };
@@ -967,8 +975,10 @@ const Mons = (event) => {
   const month = Month[newdate.getMonth()];
   const year = newdate.getFullYear();
   const cal = `${month}/${year}`;
+  if (event === "") return event;
   return cal;
 };
+
 const countStatus = (e) => {
   // 1 = expire, 2 = urgent, 3 = warning, 4 = normal, 5 = not data
   let co = { sum: {}, visa: {}, passport: {}, ninety: {}, workpermit: {} };
@@ -996,47 +1006,108 @@ const countStatus = (e) => {
   }
   return co;
 };
+// const allStatus = (e) => {
+//   const { visaexp, workpermitexp, ninetyexp, passportexp } = e;
+//   const status = { visa: "", passport: "", workpermit: "", ninety: "" };
+//   e.dateC = { ...status };
+//   e.allstatus = { ...status };
+//   e.allstatus = calDate(e);
+//   e.dateC.visaC = dateTime(visaexp);
+//   e.dateC.workpermitC = dateTime(workpermitexp);
+//   e.dateC.ninetyC = dateTime(ninetyexp);
+//   e.dateC.passportC = dateTime(passportexp);
+
+//   for (const x in e.dateC)
+//     switch (true) {
+//       case e.dateC[x] <= 0 && e.dateC[x] !== "":
+//         e.allstatus[x] = "Expire";
+//         break;
+//       case e.dateC[x] > 0 && e.dateC[x] <= 7:
+//         e.allstatus[x] = "Urgent";
+//         break;
+//       case e.dateC[x] >= 7 && e.dateC[x] <= 15:
+//         e.allstatus[x] = "Warning";
+//         break;
+//       case e.dateC[x] > 15:
+//         e.allstatus[x] = "Normal";
+//         break;
+//       default:
+//         e.allstatus[x] = "ไม่มีวันที่";
+//         break;
+//     }
+// };
+app.post("/testcount", (req, res) => {
+  const { member_group } = req.body;
+  const sql = `SELECT * FROM persons WHERE member_group = ${member_group}`;
+  connection.query(sql, (err, result) => {
+    for (const x in result) {
+      result[x].allstatus = { ...calDate(result[x]) };
+    }
+    res.json(result);
+  });
+});
 const calDate = (res) => {
-  const { visaext, workpermitext, ninetyexp, passportexp } = res;
+  const { visaexp, workpermitexp, ninetyexp, passportexp } = res;
   let obj = { status: 5, visa: "", passport: "", ninety: "", workpermit: "" };
-  obj.workpermit = dateTime(workpermitext);
-  obj.visa = dateTime(visaext);
-  obj.ninety = dateTime(ninetyexp);
-  obj.passport = dateTime(passportexp);
-  for (const x in obj) {
+  let obje = { visa: "", passport: "", ninety: "", workpermit: "" };
+  let ob = {};
+  ob.statusC = { ...obj };
+  ob.textstatus = { ...obj };
+  ob.dateC = { obje };
+  ob.dateC.workpermit = dateTime(workpermitexp);
+  ob.dateC.visa = dateTime(visaexp);
+  ob.dateC.ninety = dateTime(ninetyexp);
+  ob.dateC.passport = dateTime(passportexp);
+  // 1 = Expire, 2 = Urgent, 3 = Warning, 4 = Normal, 5 = NoDate
+  for (const x in ob.dateC) {
     if (x !== "status") {
       switch (true) {
-        case obj[x] <= 0 && obj[x] !== "":
-          obj.status = obj.status <= 1 ? obj.status : 1;
-          obj[x] = 1;
+        case ob.dateC[x] <= 0 && ob.dateC[x] !== "":
+          ob.statusC.status = ob.statusC.status <= 1 ? ob.statusC.status : 1;
+          ob.statusC[x] = 1;
+          ob.textstatus.status =
+            ob.statusC.status === 1 ? "Expire" : ob.textstatus.status;
+          ob.textstatus[x] = "Expire";
           break;
-        case obj[x] > 0 && obj[x] <= 7:
-          obj.status = obj.status <= 2 ? obj.status : 2;
-          obj[x] = 2;
+        case ob.dateC[x] > 0 && ob.dateC[x] <= 7:
+          ob.statusC.status = ob.statusC.status <= 2 ? ob.statusC.status : 2;
+          ob.statusC[x] = 2;
+          ob.textstatus.status =
+            ob.statusC.status === 2 ? "Urgent" : ob.textstatus.status;
+          ob.textstatus[x] = "Urgent";
           break;
-        case obj[x] >= 7 && obj[x] <= 15:
-          obj.status = obj.status <= 3 ? obj.status : 3;
-          obj[x] = 3;
+        case ob.dateC[x] >= 7 && ob.dateC[x] <= 15:
+          ob.statusC.status = ob.statusC.status <= 3 ? ob.statusC.status : 3;
+          ob.statusC[x] = 3;
+          ob.textstatus.status =
+            ob.statusC.status === 3 ? "Warning" : ob.textstatus.status;
+          ob.textstatus[x] = "Warning";
           break;
-        case obj[x] > 15:
-          obj.status = obj.status <= 4 ? obj.status : 4;
-          obj[x] = 4;
+        case ob.dateC[x] > 15:
+          ob.statusC.status = ob.statusC.status <= 4 ? ob.statusC.status : 4;
+          ob.statusC[x] = 4;
+          ob.textstatus.status =
+            ob.statusC.status === 4 ? "Normal" : ob.textstatus.status;
+          ob.textstatus[x] = "Normal";
           break;
         default:
-          obj.status = obj.status <= 5 ? obj.status : 5;
-          obj[x] = 5;
+          ob.statusC.status = ob.statusC.status <= 5 ? ob.statusC.status : 5;
+          ob.statusC[x] = 5;
+          ob.textstatus.status =
+            ob.statusC.status === 5 ? "NoDate" : ob.textstatus.status;
+          ob.textstatus[x] = "NoDate";
           break;
       }
     }
   }
-  return obj;
+  return ob;
 };
 
 const dateTime = (e) => {
   let date = new Date(e);
   let caldate =
     Math.floor(date / 86400e3) + 1 - Math.floor(new Date(Date.now()) / 86400e3);
-  return (caldate = isNaN(caldate) ? "" : caldate);
+  return (caldate = isNaN(caldate) ? "NoDate" : caldate);
 };
 
 app.post("/webhook", (req, res) => {
