@@ -446,11 +446,14 @@ app.post("/api/upload", currentFile, file, (req, res, next) => {
 ///////////////////////// upload file  /////////////////////////
 ///////////////////////// GET /////////////////////////
 // jwtValidate,
-app.post("/api/users", (req, res) => {
+app.get("/api/users", (req, res) => {
   // console.log(req.body.member_group);
-  if (!req.body.member_group) return res.status();
-  const group = req.body.member_group
-    ? `WHERE p.member_group = ${req.body.member_group}`
+  console.log(req.query.member_group);
+  // console.log(req);
+  // console.log(req.body.member_group);
+  if (!req.query.member_group) return res.status();
+  const group = req.query.member_group
+    ? `WHERE p.member_group = ${req.query.member_group}`
     : ``;
   const sqlget = `SELECT p.*, c.* FROM persons as p LEFT JOIN company as c ON p.company_id = c.cpn_id ${group}`;
   connection.query(sqlget, (err, results, fields) => {

@@ -1,8 +1,7 @@
 /.env
 /node_modules
 /files
-/index copy
+
 # misc
 .vscode
 /.vscode
-index copy.js
