@@ -451,11 +451,11 @@ app.get("/api/users", (req, res) => {
   console.log(req.query.member_group);
   // console.log(req);
   // console.log(req.body.member_group);
-  if (!req.query.member_group) return res.status();
+  if (!req.query.member_group) return res.send(400);
   const group = req.query.member_group
-    ? `WHERE p.member_group = ${req.query.member_group}`
+    ? `WHERE member_group = ${req.query.member_group}`
     : ``;
-  const sqlget = `SELECT p.*, c.* FROM persons as p LEFT JOIN company as c ON p.company_id = c.cpn_id ${group}`;
+  const sqlget = `SELECT * FROM persons ${group}`;
   connection.query(sqlget, (err, results, fields) => {
     if (err) return alert(500, "Error", "Not Connect data", res);
     // return res
@@ -463,13 +463,12 @@ app.get("/api/users", (req, res) => {
     //   .json({ message: "Database Not Connect or Server OFFLINE" });
 
     for (const x in results) {
-      results[x].id = results[x].person_id;
+      results[x].id = results[x].id;
       results[x].fullName = `${results[x].firstname} ${results[x].lastname}`;
       results[x].email = "";
       results[x].allStatus = { ...calDate(results[x]) };
     }
-    res.status(200).send({
-      status: "ok",
+    res.send({
       data: results,
     });
   });
@@ -995,14 +994,14 @@ const countStatus = (e) => {
     for (const y in co[x]) {
       const no = parseInt(y);
       if (x === "sum") {
-        const a = (val) => val.status === no;
+        const a = (val) => val.statusC.status === no;
         if (y === "total") {
           co[x][y] = e.length;
         } else {
           co[x][y] = e.filter(a).length;
         }
       } else {
-        const a = (val) => val[x] === no;
+        const a = (val) => val.statusC[x] === no;
         co[x][y] = e.filter(a).length;
       }
     }
